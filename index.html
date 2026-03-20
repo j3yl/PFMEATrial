@@ -368,7 +368,7 @@
                     <th colspan="3" style="text-align:center;background:rgba(52,199,123,.12);color:var(--sub)">FUNCTION ANALYSIS (Step 3)</th>
                     <th colspan="4" style="text-align:center;background:rgba(239,68,68,.12);color:var(--red)">FAILURE ANALYSIS (Step 4)</th>
                     <th colspan="5" style="text-align:center;background:rgba(245,158,11,.12);color:var(--amber)">RISK ANALYSIS (Step 5)</th>
-                    <th colspan="9" style="text-align:center;background:rgba(124,92,246,.12);color:var(--comp)">OPTIMIZATION (Step 6)</th>
+                    <th colspan="12" style="text-align:center;background:rgba(124,92,246,.12);color:var(--comp)">OPTIMIZATION (Step 6)</th>
                     <th rowspan="2" style="width:28px;border-top:none;padding:0;background:var(--bg3)"></th>
                   </tr>
                   <tr>
@@ -387,11 +387,14 @@
                     <th style="min-width:120px">Detection Control (DC)</th>
                     <th class="th-vert" title="Detection of FC/FM"><span>Detection (D) of FC/FM</span></th>
                     <th class="th-vert" title="Action Priority"><span>PFMEA AP</span></th>
+                    <th class="th-vert" title="Special Product Characteristic"><span>Sp Prod Char</span></th>
                     <th style="min-width:130px">Prevention Action</th>
                     <th style="min-width:130px">Detection Action</th>
                     <th style="min-width:100px">Responsible Person</th>
                     <th style="min-width:80px">Target Date</th>
+                    <th style="min-width:100px">Status</th>
                     <th style="min-width:120px">Action Taken &amp; Evidence</th>
+                    <th style="min-width:100px">Completion Date</th>
                     <th class="th-vert" title="Severity after actions"><span>Severity (S)</span></th>
                     <th class="th-vert" title="Occurrence after actions"><span>Occurrence (O)</span></th>
                     <th class="th-vert" title="Detection after actions"><span>Detection (D)</span></th>
@@ -451,7 +454,7 @@
             <th colspan="3" style="text-align:center;background:rgba(52,199,123,.12);color:var(--sub)">FUNCTION ANALYSIS (Step 3)</th>
             <th colspan="4" style="text-align:center;background:rgba(239,68,68,.12);color:var(--red)">FAILURE ANALYSIS (Step 4)</th>
             <th colspan="5" style="text-align:center;background:rgba(245,158,11,.12);color:var(--amber)">RISK ANALYSIS (Step 5)</th>
-            <th colspan="9" style="text-align:center;background:rgba(124,92,246,.12);color:var(--comp)">OPTIMIZATION (Step 6)</th>
+            <th colspan="12" style="text-align:center;background:rgba(124,92,246,.12);color:var(--comp)">OPTIMIZATION (Step 6)</th>
             <th rowspan="2" style="width:28px;border-top:none;padding:0;background:var(--bg3)"></th>
           </tr>
           <tr>
@@ -470,11 +473,14 @@
             <th style="min-width:120px">Detection Control (DC) of FC or FM</th>
             <th class="th-vert"><span>Detection (D) of FC / FM</span></th>
             <th class="th-vert"><span>Action Priority (AP)</span></th>
+            <th class="th-vert" title="Special Product Characteristic"><span>Sp Prod Char</span></th>
             <th style="min-width:130px">Prevention Action</th>
             <th style="min-width:130px">Detection Action</th>
             <th style="min-width:100px">Responsible Person</th>
             <th style="min-width:80px">Target Date</th>
+            <th style="min-width:100px">Status</th>
             <th style="min-width:120px">Action Taken &amp; Evidence</th>
+            <th style="min-width:100px">Completion Date</th>
             <th class="th-vert"><span>Severity (S)*</span></th>
             <th class="th-vert"><span>Occurrence (O)*</span></th>
             <th class="th-vert"><span>Detection (D)*</span></th>
@@ -1131,11 +1137,20 @@ function mkRow(row,i,nodeType,sourceNodeId){
     <td><textarea class="cell-input" rows="2" oninput="updCell('${id}','detCtrl',this.value)">${esc(row.detCtrl||'')}</textarea></td>
     <td><input class="cell-num" type="number" min="1" max="10" value="${row.det||''}" oninput="updCell('${id}','det',this.value);rfRow('${id}')" /></td>
     <td><div class="rpn-badge ${apc}" id="ap-${id}">${ap||'–'}</div></td>
+    <td><input class="cell-input" type="text" placeholder="e.g. CC, SC" value="${esc(row.spProdChar||'')}" oninput="updCell('${id}','spProdChar',this.value)" style="min-height:36px;text-align:center" /></td>
     <td><textarea class="cell-input" rows="2" oninput="updCell('${id}','prevAction',this.value)">${esc(row.prevAction||'')}</textarea></td>
     <td><textarea class="cell-input" rows="2" oninput="updCell('${id}','detAction',this.value)">${esc(row.detAction||'')}</textarea></td>
     <td><textarea class="cell-input" rows="2" oninput="updCell('${id}','resp',this.value)">${esc(row.resp||'')}</textarea></td>
     <td><input class="cell-input" type="text" placeholder="YYYY-MM-DD" value="${esc(row.date||'')}" oninput="updCell('${id}','date',this.value)" style="min-height:36px" /></td>
+    <td><select class="cell-input" oninput="updCell('${id}','status',this.value)" style="min-height:36px;cursor:pointer">
+      <option value="" ${!row.status?'selected':''}>–</option>
+      <option value="Open" ${row.status==='Open'?'selected':''}>Open</option>
+      <option value="In Progress" ${row.status==='In Progress'?'selected':''}>In Progress</option>
+      <option value="Completed" ${row.status==='Completed'?'selected':''}>Completed</option>
+      <option value="Cancelled" ${row.status==='Cancelled'?'selected':''}>Cancelled</option>
+    </select></td>
     <td><textarea class="cell-input" rows="2" oninput="updCell('${id}','taken',this.value)">${esc(row.taken||'')}</textarea></td>
+    <td><input class="cell-input" type="text" placeholder="YYYY-MM-DD" value="${esc(row.completionDate||'')}" oninput="updCell('${id}','completionDate',this.value)" style="min-height:36px" /></td>
     <td><input class="cell-num" type="number" min="1" max="10" value="${row.sev2||''}" oninput="updCell('${id}','sev2',this.value);rfRow('${id}')" /></td>
     <td><input class="cell-num" type="number" min="1" max="10" value="${row.occ2||''}" oninput="updCell('${id}','occ2',this.value);rfRow('${id}')" /></td>
     <td><input class="cell-num" type="number" min="1" max="10" value="${row.det2||''}" oninput="updCell('${id}','det2',this.value);rfRow('${id}')" /></td>
@@ -1187,7 +1202,7 @@ function getSelNode(){
 }
 function addPfmeaRow(){
   const node=getSelNode(); if(!node) return;
-  node.pfmea.push({id:genId(),processItem:'',processStep:'',workElement:'',fnItem:'',fnStep:'',fnWork:'',failEffect:'',sev:'',failMode:'',failCause:'',prevCtrl:'',occ:'',detCtrl:'',det:'',prevAction:'',detAction:'',resp:'',date:'',taken:'',sev2:'',occ2:'',det2:''});
+  node.pfmea.push({id:genId(),processItem:'',processStep:'',workElement:'',fnItem:'',fnStep:'',fnWork:'',failEffect:'',sev:'',failMode:'',failCause:'',prevCtrl:'',occ:'',detCtrl:'',det:'',spProdChar:'',prevAction:'',detAction:'',resp:'',date:'',status:'',taken:'',completionDate:'',sev2:'',occ2:'',det2:''});
   renderPfmeaTable(node); saveState();
   // Scroll both table-wrap and drawer-body to bottom
   ['table-wrap','drawer-body-scroll'].forEach(id=>{const el=document.getElementById(id);if(el)el.scrollTop=999999;});
@@ -1382,7 +1397,7 @@ function exportCurrentCSV(){
     'FUNCTION ANALYSIS (Step 3)','FUNCTION ANALYSIS (Step 3)','FUNCTION ANALYSIS (Step 3)',
     'FAILURE ANALYSIS (Step 4)','FAILURE ANALYSIS (Step 4)','FAILURE ANALYSIS (Step 4)','FAILURE ANALYSIS (Step 4)',
     'RISK ANALYSIS (Step 5)','RISK ANALYSIS (Step 5)','RISK ANALYSIS (Step 5)','RISK ANALYSIS (Step 5)','RISK ANALYSIS (Step 5)',
-    'OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)'
+    'OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)'
   ];
   const colHeaders=[
     'Project','Process','Component','Sub-component','Level',
@@ -1401,11 +1416,14 @@ function exportCurrentCSV(){
     'Detection Control (DC) of FC or FM',
     'Detection (D) of FC/FM',
     'Action Priority (AP)',
+    'Sp Prod Char',
     'Prevention Action',
     'Detection Action',
     'Responsible Person',
     'Target Date',
+    'Status',
     'Action Taken & Evidence',
+    'Completion Date',
     'Severity (S)*',
     'Occurrence (O)*',
     'Detection (D)*',
@@ -1456,11 +1474,14 @@ function exportCurrentCSV(){
       row.detCtrl||'',
       row.det||'',
       ap,
+      row.spProdChar||'',
       row.prevAction||'',
       row.detAction||'',
       row.resp||'',
       row.date||'',
+      row.status||'',
       row.taken||'',
+      row.completionDate||'',
       row.sev2||'',
       row.occ2||'',
       row.det2||'',
