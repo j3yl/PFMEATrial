@@ -34,7 +34,9 @@
   .logo { font-size:15px; font-weight:700; letter-spacing:.5px; background:var(--accentg); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
   .topbar-sep { width:1px; height:20px; background:var(--border2); }
   .project-label { font-size:13px; color:var(--text2); }
-  .project-name { font-size:14px; font-weight:600; color:var(--text); margin-left:6px; }
+  .project-name { font-size:14px; font-weight:600; color:var(--text); margin-left:6px; cursor:pointer; border-radius:5px; padding:2px 6px; transition:background .15s; }
+  .project-name:hover { background:var(--bg3); }
+  .project-name-input { font-size:14px; font-weight:600; color:var(--text); background:var(--bg3); border:1px solid var(--accent); border-radius:5px; padding:2px 8px; margin-left:6px; outline:none; font-family:var(--font); min-width:160px; }
   .topbar-actions { display:flex; gap:8px; }
   .btn { padding:7px 16px; border-radius:7px; font-size:13px; font-weight:500; cursor:pointer; border:none; transition:all .15s; }
   .btn-primary { background:var(--accent); color:#fff; }
@@ -249,7 +251,8 @@
   <div class="logo">PFMEA Manager</div>
   <div class="topbar-sep"></div>
   <span class="project-label">Project:</span>
-  <span class="project-name" id="project-name-display">New Project</span>
+  <span class="project-name" id="project-name-display" onclick="startRenameProject()" title="Click to rename">New Project</span>
+  <span style="font-size:10px;color:var(--text3);margin-left:2px;cursor:pointer" onclick="startRenameProject()" title="Click to rename">✎</span>
   <span id="sync-status" style="font-size:11px;color:var(--text3);margin-left:auto;margin-right:4px"></span>
   <div class="topbar-actions" style="margin-left:0">
     <button class="btn btn-ghost" onclick="openProjectModal()">⚙ Settings</button>
@@ -414,6 +417,7 @@
       </div>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
         <span id="rpn-summary" style="font-size:12px;color:var(--text2)"></span>
+        <button class="btn btn-ghost btn-sm" onclick="exportCurrentCSV()" title="Download this view as CSV">↓ CSV</button>
         <button class="btn btn-ghost btn-sm" onclick="addPfmeaRow()">+ Add Row</button>
       </div>
     </div>
@@ -1352,6 +1356,121 @@ function exportJSON(){
 }
 
 function importJSON(){ document.getElementById('file-input').click(); }
+
+function exportCurrentCSV(){
+  const entries = collectRows(selectedNodeId);
+  if(!entries.length){ alert('No PFMEA rows to export for this selection.'); return; }
+
+  // Two-row grouped header matching the web app
+  const groupRow=[
+    'Project','Process','Component','Sub-component','Level',
+    'STRUCTURE ANALYSIS (Step 2)','STRUCTURE ANALYSIS (Step 2)','STRUCTURE ANALYSIS (Step 2)',
+    'FUNCTION ANALYSIS (Step 3)','FUNCTION ANALYSIS (Step 3)','FUNCTION ANALYSIS (Step 3)',
+    'FAILURE ANALYSIS (Step 4)','FAILURE ANALYSIS (Step 4)','FAILURE ANALYSIS (Step 4)','FAILURE ANALYSIS (Step 4)',
+    'RISK ANALYSIS (Step 5)','RISK ANALYSIS (Step 5)','RISK ANALYSIS (Step 5)','RISK ANALYSIS (Step 5)','RISK ANALYSIS (Step 5)',
+    'OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)'
+  ];
+  const colHeaders=[
+    'Project','Process','Component','Sub-component','Level',
+    '1. Process Item / System / Part',
+    '2. Process Step & Focus Element',
+    '3. Work Element (4M)',
+    '1. Function of Process Item',
+    '2. Function of Process Step',
+    '3. Function of Work Element',
+    '1. Failure Effects (FE)',
+    'Severity (S)',
+    '2. Failure Mode (FM)',
+    '3. Failure Cause (FC)',
+    'Prevention Control (PC) of FC',
+    'Occurrence (O) of FC',
+    'Detection Control (DC) of FC or FM',
+    'Detection (D) of FC/FM',
+    'Action Priority (AP)',
+    'Prevention Action',
+    'Detection Action',
+    'Responsible Person',
+    'Target Date',
+    'Action Taken & Evidence',
+    'Severity (S)*',
+    'Occurrence (O)*',
+    'Detection (D)*',
+    'Action Priority (AP)*'
+  ];
+
+  // Build breadcrumb lookup for each entry
+  function getBreadcrumb(entry){
+    const proj=state.project.name||'Project';
+    let proc='',comp='',sub='';
+    if(entry.nodeType==='process'){ proc=entry.nodeName; }
+    else if(entry.nodeType==='comp'){
+      comp=entry.nodeName;
+      // Find parent process
+      for(const p of state.processes)
+        if((p.components||[]).some(c=>c.id===entry.nodeId)){ proc=p.name; break; }
+    } else if(entry.nodeType==='sub'){
+      sub=entry.nodeName;
+      for(const p of state.processes)
+        for(const c of p.components||[])
+          if((c.subs||[]).some(s=>s.id===entry.nodeId)){ proc=p.name; comp=c.name; break; }
+    }
+    return {proj,proc,comp,sub};
+  }
+
+  const typeLabel={project:'Project',process:'Process',comp:'Component',sub:'Sub-component'};
+
+  const rows=[groupRow, colHeaders];
+  entries.forEach(entry=>{
+    const {proj,proc,comp,sub}=getBreadcrumb(entry);
+    const row=entry.row;
+    const ap=getAP(row), ap2=getAP(row,true);
+    rows.push([
+      proj, proc, comp, sub,
+      typeLabel[entry.nodeType]||'',
+      row.processItem||'',
+      row.processStep||'',
+      row.workElement||'',
+      row.fnItem||'',
+      row.fnStep||'',
+      row.fnWork||'',
+      row.failEffect||'',
+      row.sev||'',
+      row.failMode||'',
+      row.failCause||'',
+      row.prevCtrl||'',
+      row.occ||'',
+      row.detCtrl||'',
+      row.det||'',
+      ap,
+      row.prevAction||'',
+      row.detAction||'',
+      row.resp||'',
+      row.date||'',
+      row.taken||'',
+      row.sev2||'',
+      row.occ2||'',
+      row.det2||'',
+      ap2
+    ]);
+  });
+
+  function csvCell(v){
+    const s=String(v==null?'':v);
+    if(s.includes(',')||s.includes('"')||s.includes('\n')||s.includes('\r'))
+      return '"'+s.replace(/"/g,'""')+'"';
+    return s;
+  }
+
+  const csv=rows.map(r=>r.map(csvCell).join(',')).join('\r\n');
+  const bom='\uFEFF';
+  // Use the current node name for the filename
+  const selNode=getSelNode();
+  const fname=(selNode?.name||state.project.name||'pfmea').replace(/[^a-z0-9_\-]/gi,'_');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(bom+csv);
+  a.download=fname+'_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+}
 function loadFile(e){
   const f=e.target.files[0]; if(!f) return;
   const r=new FileReader();
@@ -1467,6 +1586,44 @@ function setSyncStatus(s){
   const map={loading:['⟳ Syncing…','var(--text3)'], saving:['⟳ Saving…','var(--text3)'], saved:['✓ Saved','var(--green)'], error:['⚠ Offline','var(--amber)']};
   const [txt,col]=map[s]||map.saved;
   el.textContent=txt; el.style.color=col;
+}
+
+// ═══════════════════════════════════
+//  INLINE PROJECT RENAME
+// ═══════════════════════════════════
+function startRenameProject(){
+  const span=document.getElementById('project-name-display');
+  if(document.getElementById('project-name-input-inline')) return; // already editing
+  const currentName=state.project.name||'New Project';
+  const input=document.createElement('input');
+  input.id='project-name-input-inline';
+  input.className='project-name-input';
+  input.value=currentName;
+  input.style.width=Math.max(160, currentName.length*9)+'px';
+  span.replaceWith(input);
+  input.focus();
+  input.select();
+  function finish(){
+    const name=input.value.trim()||'New Project';
+    state.project.name=name;
+    // Restore the span
+    const newSpan=document.createElement('span');
+    newSpan.className='project-name';
+    newSpan.id='project-name-display';
+    newSpan.title='Click to rename';
+    newSpan.textContent=name;
+    newSpan.onclick=startRenameProject;
+    input.replaceWith(newSpan);
+    // Update all other displays
+    document.getElementById('project-root-label').textContent=name;
+    saveState();
+    if(currentView==='chart') renderChart();
+  }
+  input.addEventListener('blur', finish);
+  input.addEventListener('keydown', e=>{
+    if(e.key==='Enter'){ e.preventDefault(); input.blur(); }
+    if(e.key==='Escape'){ input.value=state.project.name||'New Project'; input.blur(); }
+  });
 }
 
 // ═══════════════════════════════════
