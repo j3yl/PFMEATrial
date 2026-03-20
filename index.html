@@ -1,16 +1,16 @@
 <!--
   PFMEA Manager
-  Version: 1.4.0
+  Version: 1.5.0
 
   Changelog:
+  v1.5.0 — Added Sp Prod Char column (after AP), Status dropdown column (after
+           Target Date), and Completion Date column (after Action Taken).
+           Changed date format to DD-MM-YYYY throughout.
   v1.4.0 — Added CSV export button to PFMEA table header; exports all rows from
            selected node downwards with full column headers. Single header row only.
   v1.3.0 — Supabase integration: project data now saves to and loads from a cloud
            database automatically, with a live Saved / Saving status indicator
            in the topbar. Falls back to localStorage if offline.
-  v1.2.0 — Cumulative PFMEA view: selecting any node now shows its own rows plus
-           all rows from child nodes, grouped by source with coloured level dots
-           and section banners. Edits and deletes still write to the correct node.
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -1141,7 +1141,7 @@ function mkRow(row,i,nodeType,sourceNodeId){
     <td><textarea class="cell-input" rows="2" oninput="updCell('${id}','prevAction',this.value)">${esc(row.prevAction||'')}</textarea></td>
     <td><textarea class="cell-input" rows="2" oninput="updCell('${id}','detAction',this.value)">${esc(row.detAction||'')}</textarea></td>
     <td><textarea class="cell-input" rows="2" oninput="updCell('${id}','resp',this.value)">${esc(row.resp||'')}</textarea></td>
-    <td><input class="cell-input" type="text" placeholder="YYYY-MM-DD" value="${esc(row.date||'')}" oninput="updCell('${id}','date',this.value)" style="min-height:36px" /></td>
+    <td><input class="cell-input" type="text" placeholder="DD-MM-YYYY" value="${esc(row.date||'')}" oninput="updCell('${id}','date',this.value)" style="min-height:36px" /></td>
     <td><select class="cell-input" oninput="updCell('${id}','status',this.value)" style="min-height:36px;cursor:pointer">
       <option value="" ${!row.status?'selected':''}>–</option>
       <option value="Open" ${row.status==='Open'?'selected':''}>Open</option>
@@ -1150,7 +1150,7 @@ function mkRow(row,i,nodeType,sourceNodeId){
       <option value="Cancelled" ${row.status==='Cancelled'?'selected':''}>Cancelled</option>
     </select></td>
     <td><textarea class="cell-input" rows="2" oninput="updCell('${id}','taken',this.value)">${esc(row.taken||'')}</textarea></td>
-    <td><input class="cell-input" type="text" placeholder="YYYY-MM-DD" value="${esc(row.completionDate||'')}" oninput="updCell('${id}','completionDate',this.value)" style="min-height:36px" /></td>
+    <td><input class="cell-input" type="text" placeholder="DD-MM-YYYY" value="${esc(row.completionDate||'')}" oninput="updCell('${id}','completionDate',this.value)" style="min-height:36px" /></td>
     <td><input class="cell-num" type="number" min="1" max="10" value="${row.sev2||''}" oninput="updCell('${id}','sev2',this.value);rfRow('${id}')" /></td>
     <td><input class="cell-num" type="number" min="1" max="10" value="${row.occ2||''}" oninput="updCell('${id}','occ2',this.value);rfRow('${id}')" /></td>
     <td><input class="cell-num" type="number" min="1" max="10" value="${row.det2||''}" oninput="updCell('${id}','det2',this.value);rfRow('${id}')" /></td>
