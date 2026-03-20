@@ -1,3 +1,17 @@
+<!--
+  PFMEA Manager
+  Version: 1.4.0
+
+  Changelog:
+  v1.4.0 — Added CSV export button to PFMEA table header; exports all rows from
+           selected node downwards with full column headers. Single header row only.
+  v1.3.0 — Supabase integration: project data now saves to and loads from a cloud
+           database automatically, with a live Saved / Saving status indicator
+           in the topbar. Falls back to localStorage if offline.
+  v1.2.0 — Cumulative PFMEA view: selecting any node now shows its own rows plus
+           all rows from child nodes, grouped by source with coloured level dots
+           and section banners. Edits and deletes still write to the correct node.
+-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1419,7 +1433,7 @@ function exportCurrentCSV(){
 
   const typeLabel={project:'Project',process:'Process',comp:'Component',sub:'Sub-component'};
 
-  const rows=[groupRow, colHeaders];
+  const rows=[colHeaders];
   entries.forEach(entry=>{
     const {proj,proc,comp,sub}=getBreadcrumb(entry);
     const row=entry.row;
