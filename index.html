@@ -1433,7 +1433,7 @@ function exportCurrentCSV(){
 
   const typeLabel={project:'Project',process:'Process',comp:'Component',sub:'Sub-component'};
 
-  const rows=[colHeaders];
+  const rows=[];
   entries.forEach(entry=>{
     const {proj,proc,comp,sub}=getBreadcrumb(entry);
     const row=entry.row;
