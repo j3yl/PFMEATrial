@@ -1,16 +1,17 @@
 <!--
   PFMEA Manager
-  Version: 1.5.0
+  Version: 1.6.0
 
   Changelog:
+  v1.6.0 — Added AIAG-VDA Scope Definition header above the PFMEA table with
+           editable fields: Company Name, Plant Location, Customer Name, Model
+           Year/Platform, Project Name, PFMEA Start/Revision Date, Cross-Functional
+           Team, PFMEA ID Number, Process Responsibility, Confidentiality Level.
   v1.5.0 — Added Sp Prod Char column (after AP), Status dropdown column (after
            Target Date), and Completion Date column (after Action Taken).
            Changed date format to DD-MM-YYYY throughout.
   v1.4.0 — Added CSV export button to PFMEA table header; exports all rows from
            selected node downwards with full column headers. Single header row only.
-  v1.3.0 — Supabase integration: project data now saves to and loads from a cloud
-           database automatically, with a live Saved / Saving status indicator
-           in the topbar. Falls back to localStorage if offline.
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -236,6 +237,27 @@
   .fade-in { animation:fadeIn .2s ease; }
   @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
 
+  /* Scope definition header */
+  .scope-header {
+    border:1px solid var(--border2); border-collapse:collapse;
+    width:100%; font-size:11px; margin-bottom:0; background:var(--bg2);
+    flex-shrink:0;
+  }
+  .scope-header td {
+    border:1px solid var(--border2); padding:0; vertical-align:middle;
+  }
+  .scope-header .sh-label {
+    padding:5px 10px; color:var(--text2); font-weight:600;
+    white-space:nowrap; width:1%; background:var(--bg3);
+  }
+  .scope-header .sh-val input {
+    width:100%; background:transparent; border:none; outline:none;
+    color:var(--text); font-size:11px; font-family:var(--font);
+    padding:5px 8px; min-width:120px;
+  }
+  .scope-header .sh-val input:focus { background:rgba(79,126,248,.08); }
+  .scope-wrap { flex-shrink:0; padding:0; display:none; }
+
   /* Add dropdown */
   .add-dropdown-wrap { position:relative; }
   .add-dropdown {
@@ -444,6 +466,40 @@
         Select any node from the left panel<br>to view or edit its PFMEA table.<br>
         <span style="font-size:12px;color:var(--text3)">In Chart view, right-click a node for more options.</span>
       </div>
+    </div>
+    <div class="scope-wrap" id="scope-wrap">
+      <table class="scope-header">
+        <tr>
+          <td class="sh-label">Company Name:</td>
+          <td class="sh-val"><input id="sh-company" oninput="updScope('company',this.value)" placeholder="Company name" /></td>
+          <td class="sh-label">Project Name:</td>
+          <td class="sh-val"><input id="sh-projname" oninput="updScope('projName',this.value)" placeholder="Project name" /></td>
+          <td class="sh-label">PFMEA ID Number:</td>
+          <td class="sh-val"><input id="sh-pfmeaid" oninput="updScope('pfmeaId',this.value)" placeholder="ID" /></td>
+        </tr>
+        <tr>
+          <td class="sh-label">Plant Location:</td>
+          <td class="sh-val"><input id="sh-plant" oninput="updScope('plant',this.value)" placeholder="Location" /></td>
+          <td class="sh-label">PFMEA Start Date:</td>
+          <td class="sh-val"><input id="sh-startdate" oninput="updScope('startDate',this.value)" placeholder="DD-MM-YYYY" /></td>
+          <td class="sh-label">Process Responsibility:</td>
+          <td class="sh-val"><input id="sh-procresp" oninput="updScope('procResp',this.value)" placeholder="Name / Dept" /></td>
+        </tr>
+        <tr>
+          <td class="sh-label">Customer Name:</td>
+          <td class="sh-val"><input id="sh-customer" oninput="updScope('customer',this.value)" placeholder="Customer" /></td>
+          <td class="sh-label">PFMEA Revision Date:</td>
+          <td class="sh-val"><input id="sh-revdate" oninput="updScope('revDate',this.value)" placeholder="DD-MM-YYYY" /></td>
+          <td class="sh-label">Confidentiality Level:</td>
+          <td class="sh-val"><input id="sh-conf" oninput="updScope('confidentiality',this.value)" placeholder="e.g. Internal" /></td>
+        </tr>
+        <tr>
+          <td class="sh-label">Model Year / Platform:</td>
+          <td class="sh-val"><input id="sh-model" oninput="updScope('modelYear',this.value)" placeholder="e.g. 2025 / Platform A" /></td>
+          <td class="sh-label">Cross-Functional Team:</td>
+          <td class="sh-val" colspan="3"><input id="sh-team" oninput="updScope('crossFuncTeam',this.value)" placeholder="Team members" style="width:100%" /></td>
+        </tr>
+      </table>
     </div>
     <div class="table-wrap" id="table-wrap" style="display:none">
       <table class="pfmea">
@@ -1030,13 +1086,17 @@ function showPfmea(node,typeLabel,name){
     document.getElementById('table-wrap').style.display='block';
     document.getElementById('pfmea-header').style.display='flex';
     document.getElementById('pfmea-legend').style.display='flex';
+    document.getElementById('scope-wrap').style.display='block';
+    populateScopeHeader();
   } else {
     document.getElementById('pfmea-empty').style.display='none';
     document.getElementById('table-wrap').style.display='block';
     document.getElementById('pfmea-header').style.display='flex';
     document.getElementById('pfmea-legend').style.display='flex';
+    document.getElementById('scope-wrap').style.display='block';
     document.getElementById('pfmea-title').textContent=name;
     document.getElementById('pfmea-subtitle').textContent=`${typeLabel} · PFMEA (cumulative)`;
+    populateScopeHeader();
     renderPfmeaTable(node);
   }
 }
@@ -1334,6 +1394,7 @@ function deleteNode(id){
     document.getElementById('table-wrap').style.display='none';
     document.getElementById('pfmea-header').style.display='none';
     document.getElementById('pfmea-legend').style.display='none';
+    const sw=document.getElementById('scope-wrap');if(sw)sw.style.display='none';
   }
   renderTree();
   if(currentView==='chart') renderChart();
@@ -1621,6 +1682,38 @@ function setSyncStatus(s){
   const map={loading:['⟳ Syncing…','var(--text3)'], saving:['⟳ Saving…','var(--text3)'], saved:['✓ Saved','var(--green)'], error:['⚠ Offline','var(--amber)']};
   const [txt,col]=map[s]||map.saved;
   el.textContent=txt; el.style.color=col;
+}
+
+// ═══════════════════════════════════
+//  SCOPE HEADER
+// ═══════════════════════════════════
+function updScope(field, val){
+  if(!state.project.scope) state.project.scope={};
+  state.project.scope[field]=val;
+  // Keep project name in sync
+  if(field==='projName'){
+    state.project.name=val||'New Project';
+    document.getElementById('project-name-display').textContent=state.project.name;
+    const lbl=document.getElementById('project-root-label');
+    if(lbl) lbl.textContent=state.project.name;
+  }
+  saveState();
+}
+function populateScopeHeader(){
+  const s=state.project.scope||{};
+  const map={
+    'sh-company':'company','sh-projname':'projName','sh-pfmeaid':'pfmeaId',
+    'sh-plant':'plant','sh-startdate':'startDate','sh-procresp':'procResp',
+    'sh-customer':'customer','sh-revdate':'revDate','sh-conf':'confidentiality',
+    'sh-model':'modelYear','sh-team':'crossFuncTeam'
+  };
+  Object.entries(map).forEach(([id,key])=>{
+    const el=document.getElementById(id);
+    if(el && document.activeElement!==el) el.value=s[key]||'';
+  });
+  // Sync project name field with main state
+  const pn=document.getElementById('sh-projname');
+  if(pn && document.activeElement!==pn) pn.value=state.project.name||'';
 }
 
 // ═══════════════════════════════════
