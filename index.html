@@ -1,19 +1,14 @@
 <!--
   PFMEA Manager
-  Version: 1.9.1
+  Version: 2.0.6
 
   Changelog:
-  v1.9.1 — Restored level-based indentation on Name column in CSV export
-           (2/4/6 spaces for Process/Component/Sub-component).
-  v1.9.0 — CSV export now matches the PFMEA_Formatting.xlsx template exactly:
-           rows 1-4 contain the scope header (Company, Plant, Customer, Model
-           Year, Project Name, Dates, Team, PFMEA ID, Responsibility,
-           Confidentiality), row 5 is blank, row 6 has step group banners,
-           row 7 has full column headers, rows 8+ are data. Target Date renamed
-           to ECD. No indentation on Level/Name columns.
-  v1.8.0 — CSV Name column now indented by level (2/4/6 spaces for Process/
-           Component/Sub-component). Changelog updated automatically going forward.
-  v1.7.0 — Simplified CSV export breadcrumb from 5 columns down to 2 (Level, Name).
+  v2.0.6 — Disabled floating PFMEA drawer in chart view; clicking a node in
+           chart view now only caches state for list view.
+  v2.0.5 — Fixed: switching from chart back to list now correctly restores the
+           right panel PFMEA table for the selected node.
+  v2.0.4 — In chart view, clicking a node no longer opens the PFMEA table in
+           the left panel; only the floating drawer opens.
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -21,6 +16,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>PFMEA Manager</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root {
     --bg: #0f1117;
@@ -458,7 +454,7 @@
       </div>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
         <span id="rpn-summary" style="font-size:12px;color:var(--text2)"></span>
-        <button class="btn btn-ghost btn-sm" onclick="exportCurrentCSV()" title="Download this view as CSV">↓ CSV</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportCurrentXLSX()" title="Download as Excel">↓ Excel</button>
         <button class="btn btn-ghost btn-sm" onclick="addPfmeaRow()">+ Add Row</button>
       </div>
     </div>
@@ -687,7 +683,20 @@ function setView(v){
   document.getElementById('chart-view').style.display=v==='chart'?'flex':'none';
   document.getElementById('add-dropdown-wrap').style.display=v==='list'?'':'none';
   // Expand panel to full width in chart mode; restore in list mode
-  if(v==='list') closeDrawer();
+  if(v==='list'){
+    closeDrawer();
+    // Restore right panel for the currently selected node
+    if(selectedNodeId===null){
+      const n=state.project;
+      showPfmea(n,'Project',n.name||'Project');
+    } else {
+      const res=findNode(selectedNodeId);
+      if(res){
+        const tl=res.type==='process'?'Process':res.type==='comp'?'Component':'Sub-component';
+        showPfmea(res.node,tl,res.node.name);
+      }
+    }
+  }
   if(v==='chart'){
     renderChart();
     if(!_chartEverFit){ _chartEverFit=true; requestAnimationFrame(fitChart); }
@@ -1076,19 +1085,15 @@ function selectNode(id){
 }
 function showPfmea(node,typeLabel,name){
   if(currentView==='chart'){
-    // Open the floating drawer
-    document.getElementById('drawer-title').textContent=name;
-    document.getElementById('drawer-subtitle').textContent=`${typeLabel} · PFMEA (cumulative)`;
-    document.getElementById('chart-pfmea-drawer').classList.add('open');
-    renderPfmeaTable(node);
-    // Also update the main right panel for when user switches back to list view
+    // Drawer disabled — just cache state for when user switches back to list
     document.getElementById('pfmea-title').textContent=name;
     document.getElementById('pfmea-subtitle').textContent=`${typeLabel} · PFMEA (cumulative)`;
-    document.getElementById('pfmea-empty').style.display='none';
-    document.getElementById('table-wrap').style.display='block';
     document.getElementById('pfmea-header').style.display='flex';
     document.getElementById('pfmea-legend').style.display='flex';
     document.getElementById('scope-wrap').style.display='block';
+    document.getElementById('pfmea-empty').style.display='none';
+    document.getElementById('table-wrap').style.display='block';
+    renderPfmeaTable(node);
     populateScopeHeader();
   } else {
     document.getElementById('pfmea-empty').style.display='none';
@@ -1449,133 +1454,216 @@ function exportJSON(){
 
 function importJSON(){ document.getElementById('file-input').click(); }
 
-function exportCurrentCSV(){
+function exportCurrentXLSX(){
+  if(typeof XLSX === 'undefined'){ alert('Excel library not loaded yet — please wait a moment and try again.'); return; }
   const entries = collectRows(null);
-  if(!entries.length){ alert('No PFMEA rows to export for this selection.'); return; }
+  if(!entries.length){ alert('No PFMEA rows to export.'); return; }
 
-  const s=state.project.scope||{};
-  const pname=state.project.name||'';
+  const s = state.project.scope||{};
+  const pname = state.project.name||'';
+  const typeLabel = {project:'Project',process:'Process',comp:'Component',sub:'Sub-component'};
+  const indent = {project:'',process:'  ',comp:'    ',sub:'      '};
 
-  function c(v){ // csv cell escape
-    const str=String(v==null?'':v);
-    if(str.includes(',')||str.includes('"')||str.includes('\n')||str.includes('\r'))
-      return '"'+str.replace(/"/g,'""')+'"';
-    return str;
+  // ── Colour palette ──
+  const COL_STEP2  = '1F3864'; // dark blue
+  const COL_STEP3  = '375623'; // dark green
+  const COL_STEP4  = '7B0000'; // dark red
+  const COL_STEP5  = '7B3F00'; // dark amber
+  const COL_STEP6  = '3A006F'; // dark purple
+  const COL_STEP2L = 'BDD7EE'; // light blue
+  const COL_STEP3L = 'E2EFDA'; // light green
+  const COL_STEP4L = 'FFCCCC'; // light red
+  const COL_STEP5L = 'FFF2CC'; // light amber
+  const COL_STEP6L = 'E8D5FF'; // light purple
+  const COL_SCOPE  = 'D9D9D9'; // light grey for scope labels
+  const COL_HDR    = '2F2F2F'; // near black for col header bg
+  const COL_WHITE  = 'FFFFFF';
+
+  function cellStyle(bgHex, fgHex, bold, wrapText, vertical){
+    const style = {
+      fill:{ patternType:'solid', fgColor:{rgb: bgHex} },
+      font:{ bold:!!bold, color:{rgb: fgHex||COL_WHITE}, name:'Arial', sz:9 },
+      alignment:{ wrapText:!!wrapText, horizontal:'center', vertical: vertical||'center' },
+      border:{
+        top:{style:'thin',color:{rgb:'AAAAAA'}},
+        bottom:{style:'thin',color:{rgb:'AAAAAA'}},
+        left:{style:'thin',color:{rgb:'AAAAAA'}},
+        right:{style:'thin',color:{rgb:'AAAAAA'}}
+      }
+    };
+    if(vertical==='rotate') style.alignment = {textRotation:90, horizontal:'center', vertical:'bottom', wrapText:false};
+    return style;
   }
-  function row(...cells){ return cells.map(c).join(','); }
-  function empty(n){ return Array(n).fill('').join(','); }
+  function sv(v, style){ return {v:v||'', t:'s', s:style}; }
 
-  const TOTAL_COLS = 29; // Level + Name + 27 PFMEA cols
-  function pad(cells){ // pad row to TOTAL_COLS
-    while(cells.length < TOTAL_COLS) cells.push('');
-    return cells.map(c).join(',');
+  const ws = {};
+  const merges = [];
+  let R = 0; // current row (0-indexed)
+
+  function setCell(r, c, value, style){
+    const ref = XLSX.utils.encode_cell({r, c});
+    ws[ref] = typeof value === 'object' ? value : {v:String(value||''), t:'s', s:style};
   }
+  function merge(r1, c1, r2, c2){ merges.push({s:{r:r1,c:c1}, e:{r:r2,c:c2}}); }
 
-  const lines = [];
+  const scopeLblStyle = cellStyle(COL_SCOPE, '000000', true, false);
+  const scopeValStyle = cellStyle(COL_WHITE, '000000', false, false);
+  scopeValStyle.alignment = {horizontal:'left', vertical:'center'};
+  scopeLblStyle.alignment = {horizontal:'left', vertical:'center'};
 
-  // ── Rows 1-4: Scope header ──
-  // Row 1: Company Name | value | Project Name | value | PFMEA ID Number | value
-  lines.push(pad(['Company Name:',s.company||'','Project Name:',pname,'PFMEA ID Number:',s.pfmeaId||'']));
-  // Row 2: Plant Location | value | PFMEA Start Date | value | Process Responsibility | value
-  lines.push(pad(['Plant Location:',s.plant||'','PFMEA Start Date:',s.startDate||'','Process Responsibility:',s.procResp||'']));
-  // Row 3: Customer Name | value | PFMEA Revision Date | value | Confidentiality Level | value
-  lines.push(pad(['Customer Name:',s.customer||'','PFMEA Revision Date:',s.revDate||'','Confidentiality Level:',s.confidentiality||'']));
-  // Row 4: Model Year/Platform | value | Cross-Functional Team | value
-  lines.push(pad(['Model Year/Platform:',s.modelYear||'','Cross-Functional Team:',s.crossFuncTeam||'']));
-
-  // ── Row 5: blank ──
-  lines.push(empty(TOTAL_COLS));
-
-  // ── Row 6: Step group banners ──
-  // Cols: Level(1) Name(1) | Step2(3) | Step3(3) | Step4(4) | Step5(5) | Step6(12)
-  lines.push(pad([
-    '','',
-    'Structure Analysis (Step 2)','','',
-    'FUNCTIONAL ANALYSIS (Step 3)','','',
-    'FAILURE ANALYSIS (Step 4)','','','',
-    'RISK ANALYSIS (Step 5)','','','','',
-    'OPTIMIZATION (Step 6)','','','','','','','','','','',''
-  ]));
-
-  // ── Row 7: Column headers ──
-  lines.push(pad([
-    'Level','Name',
-    'Process Item',
-    '2. Process Step',
-    '3. Process Work Element',
-    '1. Function of the Process Item',
-    '2. Function of the Process Step and Product Characteristic',
-    '3. Function of the Process Work Element and Process Characteristic',
-    '1. Failure Effects',
-    'Severity (S) of FE',
-    '2. Failure Mode (FM) of the Process Step',
-    '3. Failure Cause (FC) of the Work Element',
-    'Current Prevention Control (PC) of FC',
-    'Occurrence (O) of the FC',
-    'Current Detection Controls (DC) of FC/FM',
-    'Detection (D) of FC/FM',
-    'PFMEA AP',
-    'Sp Prod Char',
-    'Prevention Action',
-    'Detection Action',
-    'Responsible',
-    'ECD',
-    'Status',
-    'Actions Taken',
-    'Completion Date',
-    'Severity (S)',
-    'Occurrence (O)',
-    'Detection (D)',
-    'PFMEA AP'
-  ]));
-
-  // ── Data rows ──
-  const typeLabel={project:'Project',process:'Process',comp:'Component',sub:'Sub-component'};
-  entries.forEach(entry=>{
-    const row=entry.row;
-    const ap=getAP(row), ap2=getAP(row,true);
-    lines.push(pad([
-      typeLabel[entry.nodeType]||'',
-      ({project:'',process:'  ',comp:'    ',sub:'      '}[entry.nodeType]||'')+(entry.nodeName||''),
-      row.processItem||'',
-      row.processStep||'',
-      row.workElement||'',
-      row.fnItem||'',
-      row.fnStep||'',
-      row.fnWork||'',
-      row.failEffect||'',
-      row.sev||'',
-      row.failMode||'',
-      row.failCause||'',
-      row.prevCtrl||'',
-      row.occ||'',
-      row.detCtrl||'',
-      row.det||'',
-      ap,
-      row.spProdChar||'',
-      row.prevAction||'',
-      row.detAction||'',
-      row.resp||'',
-      row.date||'',
-      row.status||'',
-      row.taken||'',
-      row.completionDate||'',
-      row.sev2||'',
-      row.occ2||'',
-      row.det2||'',
-      ap2
-    ]));
+  // ── Rows 0-3: Scope header (3 label+value pairs per row) ──
+  // Each pair: label in col 0, value spans cols 1-3, next label col 4, value spans 5-7, etc.
+  // Total 29 cols (0-28)
+  const scopeRows = [
+    [['Company Name:', s.company||''], ['Project Name:', pname], ['PFMEA ID Number:', s.pfmeaId||'']],
+    [['Plant Location:', s.plant||''], ['PFMEA Start Date:', s.startDate||''], ['Process Responsibility:', s.procResp||'']],
+    [['Customer Name:', s.customer||''], ['PFMEA Revision Date:', s.revDate||''], ['Confidentiality Level:', s.confidentiality||'']],
+    [['Model Year/Platform:', s.modelYear||''], ['Cross-Functional Team:', s.crossFuncTeam||''], ['', '']],
+  ];
+  // No merges — label in col N*2, value in col N*2+1, 3 pairs per row
+  scopeRows.forEach((pairs, ri) => {
+    // Fill all 29 cols with empty style first
+    for(let c=0;c<29;c++) setCell(ri, c, '', scopeValStyle);
+    pairs.forEach((pair, pi) => {
+      setCell(ri, pi*2,   pair[0], scopeLblStyle);
+      setCell(ri, pi*2+1, pair[1], scopeValStyle);
+    });
+    R++;
   });
 
-  const bom='\uFEFF';
-  const csv=lines.join('\r\n');
-  const selNode=getSelNode();
-  const fname=(state.project.name||'pfmea').replace(/[^a-z0-9_\-]/gi,'_');
-  const a=document.createElement('a');
-  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(bom+csv);
-  a.download=fname+'_'+new Date().toISOString().slice(0,10)+'.csv';
-  a.click();
+  // ── Row 4: blank ──
+  for(let c=0;c<29;c++) setCell(R, c, '', {fill:{patternType:'solid',fgColor:{rgb:'FFFFFF'}},font:{sz:8}});
+  R++;
+
+  // ── Row 5: Step group banners ──
+  // Level(0) Name(1) | Step2: 2-4 | Step3: 5-7 | Step4: 8-11 | Step5: 12-16 | Step6: 17-28
+  const banners = [
+    {label:'', col:0, span:1, bg:COL_HDR},
+    {label:'', col:1, span:1, bg:COL_HDR},
+    {label:'Structure Analysis (Step 2)', col:2, span:3, bg:COL_STEP2},
+    {label:'FUNCTIONAL ANALYSIS (Step 3)', col:5, span:3, bg:COL_STEP3},
+    {label:'FAILURE ANALYSIS (Step 4)', col:8, span:4, bg:COL_STEP4},
+    {label:'RISK ANALYSIS (Step 5)', col:12, span:5, bg:COL_STEP5},
+    {label:'OPTIMIZATION (Step 6)', col:17, span:12, bg:COL_STEP6},
+  ];
+  banners.forEach(b => {
+    const style = cellStyle(b.bg, COL_WHITE, true, false);
+    style.alignment = {horizontal:'center', vertical:'center'};
+    setCell(R, b.col, b.label, style);
+    if(b.span > 1){
+      merge(R, b.col, R, b.col + b.span - 1);
+      for(let c=b.col+1; c<b.col+b.span; c++) setCell(R, c, '', style);
+    }
+  });
+  R++;
+
+  // ── Row 6: Column headers (vertical text for narrow cols) ──
+  const headers = [
+    {label:'Level', col:0, bg:COL_HDR, vert:false},
+    {label:'Name', col:1, bg:COL_HDR, vert:false},
+    {label:'Process Item', col:2, bg:COL_STEP2L, vert:false},
+    {label:'2. Process Step', col:3, bg:COL_STEP2L, vert:false},
+    {label:'3. Process Work Element', col:4, bg:COL_STEP2L, vert:false},
+    {label:'1. Function of the Process Item', col:5, bg:COL_STEP3L, vert:false},
+    {label:'2. Function of the Process Step and Product Characteristic', col:6, bg:COL_STEP3L, vert:false},
+    {label:'3. Function of the Process Work Element and Process Characteristic', col:7, bg:COL_STEP3L, vert:false},
+    {label:'1. Failure Effects', col:8, bg:COL_STEP4L, vert:false},
+    {label:'Severity (S) of FE', col:9, bg:COL_STEP4L, vert:true},
+    {label:'2. Failure Mode (FM) of the Process Step', col:10, bg:COL_STEP4L, vert:false},
+    {label:'3. Failure Cause (FC) of the Work Element', col:11, bg:COL_STEP4L, vert:false},
+    {label:'Current Prevention Control (PC) of FC', col:12, bg:COL_STEP5L, vert:false},
+    {label:'Occurrence (O) of the FC', col:13, bg:COL_STEP5L, vert:true},
+    {label:'Current Detection Controls (DC) of FC/FM', col:14, bg:COL_STEP5L, vert:false},
+    {label:'Detection (D) of FC/FM', col:15, bg:COL_STEP5L, vert:true},
+    {label:'PFMEA AP', col:16, bg:COL_STEP5L, vert:true},
+    {label:'Sp Prod Char', col:17, bg:COL_STEP6L, vert:true},
+    {label:'Prevention Action', col:18, bg:COL_STEP6L, vert:false},
+    {label:'Detection Action', col:19, bg:COL_STEP6L, vert:false},
+    {label:'Responsible', col:20, bg:COL_STEP6L, vert:false},
+    {label:'ECD', col:21, bg:COL_STEP6L, vert:false},
+    {label:'Status', col:22, bg:COL_STEP6L, vert:false},
+    {label:'Actions Taken', col:23, bg:COL_STEP6L, vert:false},
+    {label:'Completion Date', col:24, bg:COL_STEP6L, vert:false},
+    {label:'Severity (S)', col:25, bg:COL_STEP6L, vert:true},
+    {label:'Occurrence (O)', col:26, bg:COL_STEP6L, vert:true},
+    {label:'Detection (D)', col:27, bg:COL_STEP6L, vert:true},
+    {label:'PFMEA AP', col:28, bg:COL_STEP6L, vert:true},
+  ];
+  headers.forEach(h => {
+    const style = {
+      fill:{ patternType:'solid', fgColor:{rgb: h.bg} },
+      font:{ bold:true, color:{rgb:'000000'}, name:'Arial', sz:9 },
+      border:{
+        top:{style:'thin',color:{rgb:'AAAAAA'}},
+        bottom:{style:'thin',color:{rgb:'AAAAAA'}},
+        left:{style:'thin',color:{rgb:'AAAAAA'}},
+        right:{style:'thin',color:{rgb:'AAAAAA'}}
+      }
+    };
+    if(h.vert){
+      style.alignment = {textRotation:255, horizontal:'center', vertical:'bottom', wrapText:false};
+    } else {
+      style.alignment = {wrapText:true, horizontal:'center', vertical:'center'};
+    }
+    setCell(R, h.col, h.label, style);
+  });
+  R++;
+
+  // ── Data rows ──
+  const apColor = {H:'FF0000', M:'FF9900', L:'00B050', '':'000000'};
+  entries.forEach(entry => {
+    const row = entry.row;
+    const ap = getAP(row), ap2 = getAP(row, true);
+    const lvl = typeLabel[entry.nodeType]||'';
+    const nm = (indent[entry.nodeType]||'')+(entry.nodeName||'');
+    const rowBg = ap==='H'?'FFCCCC':ap==='M'?'FFF2CC':'FFFFFF';
+    const dataStyle = (bg) => ({
+      fill:{patternType:'solid',fgColor:{rgb:bg||rowBg}},
+      font:{name:'Arial',sz:9,color:{rgb:'000000'}},
+      alignment:{wrapText:true,vertical:'top'},
+      border:{top:{style:'thin',color:{rgb:'DDDDDD'}},bottom:{style:'thin',color:{rgb:'DDDDDD'}},left:{style:'thin',color:{rgb:'DDDDDD'}},right:{style:'thin',color:{rgb:'DDDDDD'}}}
+    });
+    const numStyle = (bg) => { const s=dataStyle(bg); s.alignment={horizontal:'center',vertical:'top'}; return s; };
+    const apStyle = (ap, bg) => { const s=numStyle(bg); s.font={name:'Arial',sz:9,bold:true,color:{rgb:apColor[ap]||'000000'}}; return s; };
+
+    const vals = [
+      lvl, nm,
+      row.processItem||'', row.processStep||'', row.workElement||'',
+      row.fnItem||'', row.fnStep||'', row.fnWork||'',
+      row.failEffect||'', row.sev||'', row.failMode||'', row.failCause||'',
+      row.prevCtrl||'', row.occ||'', row.detCtrl||'', row.det||'',
+      ap, row.spProdChar||'',
+      row.prevAction||'', row.detAction||'', row.resp||'',
+      row.date||'', row.status||'', row.taken||'', row.completionDate||'',
+      row.sev2||'', row.occ2||'', row.det2||'', ap2
+    ];
+    vals.forEach((v, ci) => {
+      const isAP = (ci===16||ci===28);
+      const isNum = [9,13,15,16,25,26,27,28].includes(ci);
+      const sty = isAP ? apStyle(isAP&&ci===16?ap:ap2, rowBg) : isNum ? numStyle(rowBg) : dataStyle(rowBg);
+      setCell(R, ci, String(v), sty);
+    });
+    R++;
+  });
+
+  // ── Column widths ──
+  const colW = [14,18,18,18,18,22,28,28,22,5,22,22,20,5,20,5,5,6,20,20,14,12,12,20,14,5,5,5,5];
+  ws['!cols'] = colW.map(w => ({wch:w}));
+
+  // ── Row heights — header rows taller for vertical text ──
+  ws['!rows'] = [];
+  for(let i=0;i<R;i++) ws['!rows'][i] = {hpt: i < 4 ? 18 : i===4 ? 6 : i===5 ? 18 : i===6 ? 80 : 40};
+
+  ws['!merges'] = merges;
+  ws['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:R-1,c:28}});
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'PFMEA');
+
+  const fname = (state.project.name||'pfmea').replace(/[^a-z0-9_\-]/gi,'_');
+  XLSX.writeFile(wb, fname+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
+
 
 function loadFile(e){
   const f=e.target.files[0]; if(!f) return;
