@@ -1,8 +1,10 @@
 <!--
   PFMEA Manager
-  Version: 1.9.0
+  Version: 1.9.1
 
   Changelog:
+  v1.9.1 — Restored level-based indentation on Name column in CSV export
+           (2/4/6 spaces for Process/Component/Sub-component).
   v1.9.0 — CSV export now matches the PFMEA_Formatting.xlsx template exactly:
            rows 1-4 contain the scope header (Company, Plant, Customer, Model
            Year, Project Name, Dates, Team, PFMEA ID, Responsibility,
@@ -1534,7 +1536,7 @@ function exportCurrentCSV(){
     const ap=getAP(row), ap2=getAP(row,true);
     lines.push(pad([
       typeLabel[entry.nodeType]||'',
-      entry.nodeName||'',
+      ({project:'',process:'  ',comp:'    ',sub:'      '}[entry.nodeType]||'')+(entry.nodeName||''),
       row.processItem||'',
       row.processStep||'',
       row.workElement||'',
