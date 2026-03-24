@@ -1,8 +1,10 @@
 <!--
   PFMEA Manager
-  Version: 1.6.0
+  Version: 1.7.0
 
   Changelog:
+  v1.7.0 — Simplified CSV export breadcrumb from 5 columns (Project, Process,
+           Component, Sub-component, Level) down to 2 columns (Level, Name).
   v1.6.0 — Added AIAG-VDA Scope Definition header above the PFMEA table with
            editable fields: Company Name, Plant Location, Customer Name, Model
            Year/Platform, Project Name, PFMEA Start/Revision Date, Cross-Functional
@@ -10,8 +12,6 @@
   v1.5.0 — Added Sp Prod Char column (after AP), Status dropdown column (after
            Target Date), and Completion Date column (after Action Taken).
            Changed date format to DD-MM-YYYY throughout.
-  v1.4.0 — Added CSV export button to PFMEA table header; exports all rows from
-           selected node downwards with full column headers. Single header row only.
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -1453,7 +1453,7 @@ function exportCurrentCSV(){
 
   // Two-row grouped header matching the web app
   const groupRow=[
-    'Project','Process','Component','Sub-component','Level',
+    'Level','Name',
     'STRUCTURE ANALYSIS (Step 2)','STRUCTURE ANALYSIS (Step 2)','STRUCTURE ANALYSIS (Step 2)',
     'FUNCTION ANALYSIS (Step 3)','FUNCTION ANALYSIS (Step 3)','FUNCTION ANALYSIS (Step 3)',
     'FAILURE ANALYSIS (Step 4)','FAILURE ANALYSIS (Step 4)','FAILURE ANALYSIS (Step 4)','FAILURE ANALYSIS (Step 4)',
@@ -1461,7 +1461,7 @@ function exportCurrentCSV(){
     'OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)'
   ];
   const colHeaders=[
-    'Project','Process','Component','Sub-component','Level',
+    'Level','Name',
     '1. Process Item / System / Part',
     '2. Process Step & Focus Element',
     '3. Work Element (4M)',
@@ -1491,35 +1491,15 @@ function exportCurrentCSV(){
     'Action Priority (AP)*'
   ];
 
-  // Build breadcrumb lookup for each entry
-  function getBreadcrumb(entry){
-    const proj=state.project.name||'Project';
-    let proc='',comp='',sub='';
-    if(entry.nodeType==='process'){ proc=entry.nodeName; }
-    else if(entry.nodeType==='comp'){
-      comp=entry.nodeName;
-      // Find parent process
-      for(const p of state.processes)
-        if((p.components||[]).some(c=>c.id===entry.nodeId)){ proc=p.name; break; }
-    } else if(entry.nodeType==='sub'){
-      sub=entry.nodeName;
-      for(const p of state.processes)
-        for(const c of p.components||[])
-          if((c.subs||[]).some(s=>s.id===entry.nodeId)){ proc=p.name; comp=c.name; break; }
-    }
-    return {proj,proc,comp,sub};
-  }
-
   const typeLabel={project:'Project',process:'Process',comp:'Component',sub:'Sub-component'};
 
   const rows=[];
   entries.forEach(entry=>{
-    const {proj,proc,comp,sub}=getBreadcrumb(entry);
     const row=entry.row;
     const ap=getAP(row), ap2=getAP(row,true);
     rows.push([
-      proj, proc, comp, sub,
       typeLabel[entry.nodeType]||'',
+      entry.nodeName||'',
       row.processItem||'',
       row.processStep||'',
       row.workElement||'',
