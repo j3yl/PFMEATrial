@@ -1,17 +1,17 @@
 <!--
   PFMEA Manager
-  Version: 1.7.0
+  Version: 1.8.0
 
   Changelog:
+  v1.8.0 — CSV Name column now indented by level (2/4/6 spaces for Process/
+           Component/Sub-component). Changelog will now be updated automatically
+           with every change going forward.
   v1.7.0 — Simplified CSV export breadcrumb from 5 columns (Project, Process,
            Component, Sub-component, Level) down to 2 columns (Level, Name).
   v1.6.0 — Added AIAG-VDA Scope Definition header above the PFMEA table with
            editable fields: Company Name, Plant Location, Customer Name, Model
            Year/Platform, Project Name, PFMEA Start/Revision Date, Cross-Functional
            Team, PFMEA ID Number, Process Responsibility, Confidentiality Level.
-  v1.5.0 — Added Sp Prod Char column (after AP), Status dropdown column (after
-           Target Date), and Completion Date column (after Action Taken).
-           Changed date format to DD-MM-YYYY throughout.
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -1448,7 +1448,7 @@ function exportJSON(){
 function importJSON(){ document.getElementById('file-input').click(); }
 
 function exportCurrentCSV(){
-  const entries = collectRows(selectedNodeId);
+  const entries = collectRows(null); // always export full project
   if(!entries.length){ alert('No PFMEA rows to export for this selection.'); return; }
 
   // Two-row grouped header matching the web app
@@ -1492,6 +1492,7 @@ function exportCurrentCSV(){
   ];
 
   const typeLabel={project:'Project',process:'Process',comp:'Component',sub:'Sub-component'};
+  const indent={project:'',process:'  ',comp:'    ',sub:'      '};
 
   const rows=[];
   entries.forEach(entry=>{
@@ -1499,7 +1500,7 @@ function exportCurrentCSV(){
     const ap=getAP(row), ap2=getAP(row,true);
     rows.push([
       typeLabel[entry.nodeType]||'',
-      entry.nodeName||'',
+      (indent[entry.nodeType]||'')+( entry.nodeName||''),
       row.processItem||'',
       row.processStep||'',
       row.workElement||'',
