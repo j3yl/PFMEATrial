@@ -1,17 +1,17 @@
 <!--
   PFMEA Manager
-  Version: 1.8.0
+  Version: 1.9.0
 
   Changelog:
+  v1.9.0 — CSV export now matches the PFMEA_Formatting.xlsx template exactly:
+           rows 1-4 contain the scope header (Company, Plant, Customer, Model
+           Year, Project Name, Dates, Team, PFMEA ID, Responsibility,
+           Confidentiality), row 5 is blank, row 6 has step group banners,
+           row 7 has full column headers, rows 8+ are data. Target Date renamed
+           to ECD. No indentation on Level/Name columns.
   v1.8.0 — CSV Name column now indented by level (2/4/6 spaces for Process/
-           Component/Sub-component). Changelog will now be updated automatically
-           with every change going forward.
-  v1.7.0 — Simplified CSV export breadcrumb from 5 columns (Project, Process,
-           Component, Sub-component, Level) down to 2 columns (Level, Name).
-  v1.6.0 — Added AIAG-VDA Scope Definition header above the PFMEA table with
-           editable fields: Company Name, Plant Location, Customer Name, Model
-           Year/Platform, Project Name, PFMEA Start/Revision Date, Cross-Functional
-           Team, PFMEA ID Number, Process Responsibility, Confidentiality Level.
+           Component/Sub-component). Changelog updated automatically going forward.
+  v1.7.0 — Simplified CSV export breadcrumb from 5 columns down to 2 (Level, Name).
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -1448,59 +1448,93 @@ function exportJSON(){
 function importJSON(){ document.getElementById('file-input').click(); }
 
 function exportCurrentCSV(){
-  const entries = collectRows(null); // always export full project
+  const entries = collectRows(null);
   if(!entries.length){ alert('No PFMEA rows to export for this selection.'); return; }
 
-  // Two-row grouped header matching the web app
-  const groupRow=[
+  const s=state.project.scope||{};
+  const pname=state.project.name||'';
+
+  function c(v){ // csv cell escape
+    const str=String(v==null?'':v);
+    if(str.includes(',')||str.includes('"')||str.includes('\n')||str.includes('\r'))
+      return '"'+str.replace(/"/g,'""')+'"';
+    return str;
+  }
+  function row(...cells){ return cells.map(c).join(','); }
+  function empty(n){ return Array(n).fill('').join(','); }
+
+  const TOTAL_COLS = 29; // Level + Name + 27 PFMEA cols
+  function pad(cells){ // pad row to TOTAL_COLS
+    while(cells.length < TOTAL_COLS) cells.push('');
+    return cells.map(c).join(',');
+  }
+
+  const lines = [];
+
+  // ── Rows 1-4: Scope header ──
+  // Row 1: Company Name | value | Project Name | value | PFMEA ID Number | value
+  lines.push(pad(['Company Name:',s.company||'','Project Name:',pname,'PFMEA ID Number:',s.pfmeaId||'']));
+  // Row 2: Plant Location | value | PFMEA Start Date | value | Process Responsibility | value
+  lines.push(pad(['Plant Location:',s.plant||'','PFMEA Start Date:',s.startDate||'','Process Responsibility:',s.procResp||'']));
+  // Row 3: Customer Name | value | PFMEA Revision Date | value | Confidentiality Level | value
+  lines.push(pad(['Customer Name:',s.customer||'','PFMEA Revision Date:',s.revDate||'','Confidentiality Level:',s.confidentiality||'']));
+  // Row 4: Model Year/Platform | value | Cross-Functional Team | value
+  lines.push(pad(['Model Year/Platform:',s.modelYear||'','Cross-Functional Team:',s.crossFuncTeam||'']));
+
+  // ── Row 5: blank ──
+  lines.push(empty(TOTAL_COLS));
+
+  // ── Row 6: Step group banners ──
+  // Cols: Level(1) Name(1) | Step2(3) | Step3(3) | Step4(4) | Step5(5) | Step6(12)
+  lines.push(pad([
+    '','',
+    'Structure Analysis (Step 2)','','',
+    'FUNCTIONAL ANALYSIS (Step 3)','','',
+    'FAILURE ANALYSIS (Step 4)','','','',
+    'RISK ANALYSIS (Step 5)','','','','',
+    'OPTIMIZATION (Step 6)','','','','','','','','','','',''
+  ]));
+
+  // ── Row 7: Column headers ──
+  lines.push(pad([
     'Level','Name',
-    'STRUCTURE ANALYSIS (Step 2)','STRUCTURE ANALYSIS (Step 2)','STRUCTURE ANALYSIS (Step 2)',
-    'FUNCTION ANALYSIS (Step 3)','FUNCTION ANALYSIS (Step 3)','FUNCTION ANALYSIS (Step 3)',
-    'FAILURE ANALYSIS (Step 4)','FAILURE ANALYSIS (Step 4)','FAILURE ANALYSIS (Step 4)','FAILURE ANALYSIS (Step 4)',
-    'RISK ANALYSIS (Step 5)','RISK ANALYSIS (Step 5)','RISK ANALYSIS (Step 5)','RISK ANALYSIS (Step 5)','RISK ANALYSIS (Step 5)',
-    'OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)','OPTIMIZATION (Step 6)'
-  ];
-  const colHeaders=[
-    'Level','Name',
-    '1. Process Item / System / Part',
-    '2. Process Step & Focus Element',
-    '3. Work Element (4M)',
-    '1. Function of Process Item',
-    '2. Function of Process Step',
-    '3. Function of Work Element',
-    '1. Failure Effects (FE)',
-    'Severity (S)',
-    '2. Failure Mode (FM)',
-    '3. Failure Cause (FC)',
-    'Prevention Control (PC) of FC',
-    'Occurrence (O) of FC',
-    'Detection Control (DC) of FC or FM',
+    'Process Item',
+    '2. Process Step',
+    '3. Process Work Element',
+    '1. Function of the Process Item',
+    '2. Function of the Process Step and Product Characteristic',
+    '3. Function of the Process Work Element and Process Characteristic',
+    '1. Failure Effects',
+    'Severity (S) of FE',
+    '2. Failure Mode (FM) of the Process Step',
+    '3. Failure Cause (FC) of the Work Element',
+    'Current Prevention Control (PC) of FC',
+    'Occurrence (O) of the FC',
+    'Current Detection Controls (DC) of FC/FM',
     'Detection (D) of FC/FM',
-    'Action Priority (AP)',
+    'PFMEA AP',
     'Sp Prod Char',
     'Prevention Action',
     'Detection Action',
-    'Responsible Person',
-    'Target Date',
+    'Responsible',
+    'ECD',
     'Status',
-    'Action Taken & Evidence',
+    'Actions Taken',
     'Completion Date',
-    'Severity (S)*',
-    'Occurrence (O)*',
-    'Detection (D)*',
-    'Action Priority (AP)*'
-  ];
+    'Severity (S)',
+    'Occurrence (O)',
+    'Detection (D)',
+    'PFMEA AP'
+  ]));
 
+  // ── Data rows ──
   const typeLabel={project:'Project',process:'Process',comp:'Component',sub:'Sub-component'};
-  const indent={project:'',process:'  ',comp:'    ',sub:'      '};
-
-  const rows=[];
   entries.forEach(entry=>{
     const row=entry.row;
     const ap=getAP(row), ap2=getAP(row,true);
-    rows.push([
+    lines.push(pad([
       typeLabel[entry.nodeType]||'',
-      (indent[entry.nodeType]||'')+( entry.nodeName||''),
+      entry.nodeName||'',
       row.processItem||'',
       row.processStep||'',
       row.workElement||'',
@@ -1528,26 +1562,19 @@ function exportCurrentCSV(){
       row.occ2||'',
       row.det2||'',
       ap2
-    ]);
+    ]));
   });
 
-  function csvCell(v){
-    const s=String(v==null?'':v);
-    if(s.includes(',')||s.includes('"')||s.includes('\n')||s.includes('\r'))
-      return '"'+s.replace(/"/g,'""')+'"';
-    return s;
-  }
-
-  const csv=rows.map(r=>r.map(csvCell).join(',')).join('\r\n');
   const bom='\uFEFF';
-  // Use the current node name for the filename
+  const csv=lines.join('\r\n');
   const selNode=getSelNode();
-  const fname=(selNode?.name||state.project.name||'pfmea').replace(/[^a-z0-9_\-]/gi,'_');
+  const fname=(state.project.name||'pfmea').replace(/[^a-z0-9_\-]/gi,'_');
   const a=document.createElement('a');
   a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(bom+csv);
   a.download=fname+'_'+new Date().toISOString().slice(0,10)+'.csv';
   a.click();
 }
+
 function loadFile(e){
   const f=e.target.files[0]; if(!f) return;
   const r=new FileReader();
