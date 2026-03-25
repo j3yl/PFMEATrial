@@ -1,14 +1,15 @@
 <!--
   PFMEA Manager
-  Version: 2.1.1
+  Version: 2.1.2
 
   Changelog (last 3 versions):
+  v2.1.2 — Fixed unreadable text in Status dropdown by setting explicit
+           background and text colours on select and option elements.
   v2.1.1 — Split File button into main action (Export Excel) and a ▾ chevron
            for the full dropdown menu.
   v2.1.0 — Merged Export and Import into a single File dropdown button in the
            topbar. Excel export moved from PFMEA header into the File dropdown.
-  v2.0.6 — Disabled floating PFMEA drawer in chart view; clicking a node in
-           chart view now only caches state for list view.
+
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -1247,12 +1248,12 @@ function mkRow(row,i,nodeType,sourceNodeId){
     <td><textarea class="cell-input" rows="2" oninput="updCell('${id}','detAction',this.value)">${esc(row.detAction||'')}</textarea></td>
     <td><textarea class="cell-input" rows="2" oninput="updCell('${id}','resp',this.value)">${esc(row.resp||'')}</textarea></td>
     <td><input class="cell-input" type="text" placeholder="DD-MM-YYYY" value="${esc(row.date||'')}" oninput="updCell('${id}','date',this.value)" style="min-height:36px" /></td>
-    <td><select class="cell-input" oninput="updCell('${id}','status',this.value)" style="min-height:36px;cursor:pointer">
-      <option value="" ${!row.status?'selected':''}>–</option>
-      <option value="Open" ${row.status==='Open'?'selected':''}>Open</option>
-      <option value="In Progress" ${row.status==='In Progress'?'selected':''}>In Progress</option>
-      <option value="Completed" ${row.status==='Completed'?'selected':''}>Completed</option>
-      <option value="Cancelled" ${row.status==='Cancelled'?'selected':''}>Cancelled</option>
+    <td><select class="cell-input" oninput="updCell('${id}','status',this.value)" style="min-height:36px;cursor:pointer;background:var(--bg2);color:var(--text);border:none;">
+      <option value="" ${!row.status?'selected':''} style="background:var(--bg2);color:var(--text)">–</option>
+      <option value="Open" ${row.status==='Open'?'selected':''} style="background:var(--bg2);color:var(--text)">Open</option>
+      <option value="In Progress" ${row.status==='In Progress'?'selected':''} style="background:var(--bg2);color:var(--text)">In Progress</option>
+      <option value="Completed" ${row.status==='Completed'?'selected':''} style="background:var(--bg2);color:var(--text)">Completed</option>
+      <option value="Cancelled" ${row.status==='Cancelled'?'selected':''} style="background:var(--bg2);color:var(--text)">Cancelled</option>
     </select></td>
     <td><textarea class="cell-input" rows="2" oninput="updCell('${id}','taken',this.value)">${esc(row.taken||'')}</textarea></td>
     <td><input class="cell-input" type="text" placeholder="DD-MM-YYYY" value="${esc(row.completionDate||'')}" oninput="updCell('${id}','completionDate',this.value)" style="min-height:36px" /></td>
