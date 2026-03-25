@@ -1,14 +1,14 @@
 <!--
   PFMEA Manager
-  Version: 2.0.6
+  Version: 2.1.1
 
-  Changelog:
+  Changelog (last 3 versions):
+  v2.1.1 — Split File button into main action (Export Excel) and a ▾ chevron
+           for the full dropdown menu.
+  v2.1.0 — Merged Export and Import into a single File dropdown button in the
+           topbar. Excel export moved from PFMEA header into the File dropdown.
   v2.0.6 — Disabled floating PFMEA drawer in chart view; clicking a node in
            chart view now only caches state for list view.
-  v2.0.5 — Fixed: switching from chart back to list now correctly restores the
-           right panel PFMEA table for the selected node.
-  v2.0.4 — In chart view, clicking a node no longer opens the PFMEA table in
-           the left panel; only the floating drawer opens.
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -277,6 +277,28 @@
   .add-dd-label { font-size:13px; font-weight:500; color:var(--text); }
   .add-dd-sub { font-size:11px; color:var(--text3); margin-top:1px; }
   .add-dd-sep { height:1px; background:var(--border); margin:4px 0; }
+
+  /* File dropdown in topbar */
+  .file-dropdown-wrap { position:relative; }
+  .file-dropdown {
+    position:absolute; top:calc(100% + 6px); right:0;
+    background:var(--bg2); border:1px solid var(--border2);
+    border-radius:10px; padding:6px; z-index:500;
+    min-width:200px; box-shadow:var(--shadow);
+    opacity:0; pointer-events:none; transform:translateY(-6px);
+    transition:opacity .15s, transform .15s;
+  }
+  .file-dropdown.open { opacity:1; pointer-events:all; transform:translateY(0); }
+  .file-dd-item {
+    display:flex; align-items:center; gap:10px;
+    padding:8px 12px; border-radius:7px; cursor:pointer;
+    transition:background .1s; font-size:13px; color:var(--text2);
+  }
+  .file-dd-item:hover { background:var(--bg3); color:var(--text); }
+  .file-dd-icon { font-size:15px; width:20px; text-align:center; flex-shrink:0; }
+  .file-dd-label { font-size:13px; font-weight:500; color:var(--text); }
+  .file-dd-sub { font-size:11px; color:var(--text3); }
+  .file-dd-sep { height:1px; background:var(--border); margin:4px 0; }
 </style>
 </head>
 <body>
@@ -290,8 +312,25 @@
   <span id="sync-status" style="font-size:11px;color:var(--text3);margin-left:auto;margin-right:4px"></span>
   <div class="topbar-actions" style="margin-left:0">
     <button class="btn btn-ghost" onclick="openProjectModal()">⚙ Settings</button>
-    <button class="btn btn-ghost" onclick="exportJSON()">↓ Export</button>
-    <button class="btn btn-primary" onclick="importJSON()">↑ Import</button>
+    <div class="file-dropdown-wrap" style="display:flex;gap:0">
+      <button class="btn btn-primary" onclick="exportCurrentXLSX()" style="border-radius:7px 0 0 7px;padding-right:12px">📊 Export Excel</button>
+      <button class="btn btn-primary" onclick="toggleFileDropdown(event)" style="border-radius:0 7px 7px 0;padding:7px 9px;border-left:1px solid rgba(255,255,255,0.2)">▾</button>
+      <div class="file-dropdown" id="file-dropdown">
+        <div class="add-dd-item" onclick="closeFileDropdown();exportCurrentXLSX()">
+          <div class="add-dd-icon" style="background:rgba(52,199,123,.15);">📊</div>
+          <div><div class="add-dd-label">Export as Excel</div><div class="add-dd-sub">Full PFMEA .xlsx with formatting</div></div>
+        </div>
+        <div class="add-dd-item" onclick="closeFileDropdown();exportJSON()">
+          <div class="add-dd-icon" style="background:rgba(79,126,248,.15);">💾</div>
+          <div><div class="add-dd-label">Export as JSON</div><div class="add-dd-sub">Save project backup</div></div>
+        </div>
+        <div class="add-dd-sep"></div>
+        <div class="add-dd-item" onclick="closeFileDropdown();importJSON()">
+          <div class="add-dd-icon" style="background:rgba(245,158,11,.15);">📂</div>
+          <div><div class="add-dd-label">Import JSON</div><div class="add-dd-sub">Load a saved project</div></div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -454,8 +493,7 @@
       </div>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
         <span id="rpn-summary" style="font-size:12px;color:var(--text2)"></span>
-        <button class="btn btn-ghost btn-sm" onclick="exportCurrentXLSX()" title="Download as Excel">↓ Excel</button>
-        <button class="btn btn-ghost btn-sm" onclick="addPfmeaRow()">+ Add Row</button>
+<button class="btn btn-ghost btn-sm" onclick="addPfmeaRow()">+ Add Row</button>
       </div>
     </div>
     <div class="pfmea-empty" id="pfmea-empty">
@@ -1287,6 +1325,15 @@ function delRow(rid){
 // ═══════════════════════════════════
 //  ADD DROPDOWN
 // ═══════════════════════════════════
+function toggleFileDropdown(e){
+  e.stopPropagation();
+  const dd=document.getElementById('file-dropdown');
+  const open=dd.classList.contains('open');
+  closeAllDropdowns();
+  if(!open) dd.classList.add('open');
+}
+function closeFileDropdown(){ document.getElementById('file-dropdown').classList.remove('open'); }
+
 function toggleAddDropdown(e){
   e.stopPropagation();
   const dd=document.getElementById('add-dropdown');
@@ -1303,7 +1350,7 @@ function toggleAddDropdownChart(e){
 }
 function closeAddDropdown(){ document.getElementById('add-dropdown').classList.remove('open'); }
 function closeAddDropdownChart(){ document.getElementById('add-dropdown-chart').classList.remove('open'); }
-function closeAllDropdowns(){ closeAddDropdown(); closeAddDropdownChart(); }
+function closeAllDropdowns(){ closeAddDropdown(); closeAddDropdownChart(); closeFileDropdown(); }
 document.addEventListener('click', closeAllDropdowns);
 
 // Smart open: pre-populate parent selector based on current selection or available nodes
