@@ -882,9 +882,10 @@ function renderChart(){
   svg.setAttribute('width',maxX); svg.setAttribute('height',maxY);
   _chartW=maxX; _chartH=maxY;
 
+// Updated Marker: refX is 0 so the base sits at the end of the line
   svg.innerHTML=`<defs>
-    <marker id="arrh" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="7" markerHeight="7" orient="auto">
-      <path d="M1 1L9 4L1 7" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <marker id="arrh" viewBox="0 0 10 10" refX="0" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(255,255,255,0.35)" />
     </marker>
   </defs>`;
 
@@ -898,25 +899,26 @@ function renderChart(){
       const dx = tgtCx - srcCx, dy = tgtCy - srcCy;
       let x1, y1, x2, y2, cx1, cy1, cx2, cy2;
       const offset = 50;
+      const gap = 8; // Pulls the line back so it doesn't poke through the arrowhead
 
       if (Math.abs(dx) > Math.abs(dy)) { 
         y1 = srcCy; y2 = tgtCy;
         cy1 = y1; cy2 = y2;
         if (dx > 0) { 
-            x1 = src.x + BW; x2 = tgt.x;
+            x1 = src.x + BW; x2 = tgt.x - gap;
             cx1 = x1 + offset; cx2 = x2 - offset;
         } else { 
-            x1 = src.x; x2 = tgt.x + BW;
+            x1 = src.x; x2 = tgt.x + BW + gap;
             cx1 = x1 - offset; cx2 = x2 + offset;
         }
       } else { 
         x1 = srcCx; x2 = tgtCx;
         cx1 = x1; cx2 = x2;
         if (dy > 0) { 
-            y1 = src.y + BH; y2 = tgt.y;
+            y1 = src.y + BH; y2 = tgt.y - gap;
             cy1 = y1 + offset; cy2 = y2 - offset;
         } else { 
-            y1 = src.y; y2 = tgt.y + BH;
+            y1 = src.y; y2 = tgt.y + BH + gap;
             cy1 = y1 - offset; cy2 = y2 + offset;
         }
       }
@@ -927,7 +929,7 @@ function renderChart(){
       path.setAttribute('stroke','rgba(255,255,255,0.25)');
       path.setAttribute('stroke-width','1.5');
       path.setAttribute('marker-end','url(#arrh)');
-      path.setAttribute('class','conn-path'); // Enables click logic on SVG
+      path.setAttribute('class','conn-path'); 
       path.dataset.src=src.id; path.dataset.tgt=tid;
       path.style.cursor='pointer';
       path.addEventListener('click',e=>{ 
@@ -1048,8 +1050,16 @@ window.addEventListener('mousemove',e=>{
     const world=document.getElementById('chart-world');
     if(!world) return;
     const wr=world.getBoundingClientRect();
-    _draggingNode.x=Math.max(0,(e.clientX-wr.left)/_zoom-_dragOffX);
-    _draggingNode.y=Math.max(0,(e.clientY-wr.top)/_zoom-_dragOffY);
+    
+    // Calculate raw mouse position
+    let rawX = Math.max(0,(e.clientX-wr.left)/_zoom-_dragOffX);
+    let rawY = Math.max(0,(e.clientY-wr.top)/_zoom-_dragOffY);
+    
+    // Snap to the 28px background grid
+    const GRID = 28;
+    _draggingNode.x = Math.round(rawX / GRID) * GRID;
+    _draggingNode.y = Math.round(rawY / GRID) * GRID;
+    
     const div=document.querySelector(`.fc-node[data-id="${_draggingNode.id}"]`);
     if(div){ div.style.left=_draggingNode.x+'px'; div.style.top=_draggingNode.y+'px'; }
     renderConnections();
