@@ -1272,7 +1272,7 @@ function fitChart(){
   const vpW=vp.clientWidth, vpH=vp.clientHeight;
   const scaleX=vpW/contentW, scaleY=vpH/contentH;
   
-  _zoom=Math.min(scaleX,scaleY,1)*0.92;
+  _zoom=Math.min(scaleX,scaleY,1)*0.95;
   
   // Calculate center offset including dynamic minimum coordinates
   _panX=(vpW-contentW*_zoom)/2 - (minX * _zoom);
