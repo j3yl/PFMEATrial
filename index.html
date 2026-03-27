@@ -796,6 +796,20 @@ function renderFlatNode(n){
     subsHtml += `</div>`;
   }
 
+  function toggleConn(e, id) {
+  e.stopPropagation(); // Prevents the main process row from being clicked
+  const container = document.getElementById('conn-' + id);
+  const arrow = document.getElementById('arr-' + id);
+  
+  if (container && container.style.display === 'none') {
+    container.style.display = 'block';
+    if (arrow) arrow.style.transform = 'rotate(90deg)';
+  } else if (container) {
+    container.style.display = 'none';
+    if (arrow) arrow.style.transform = 'rotate(0deg)';
+  }
+}
+
   return `<div class="tree-node fade-in">
     <div class="node-row${act}" onclick="selectNode('${n.id}')">
       ${arrowHtml}
