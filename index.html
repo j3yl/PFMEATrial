@@ -769,12 +769,36 @@ function renderTree(){
   // Render only the filtered list
   body.innerHTML=processNodes.map(n=>renderFlatNode(n)).join('');
 }
+
 function renderFlatNode(n){
   const act=selectedNodeId===n.id?' active':'';
   const ap=nodeMaxAP(n);
   const apDot=ap?`<span style="width:8px;height:8px;border-radius:50%;background:${ap==='H'?'var(--red)':ap==='M'?'var(--amber)':'var(--green)'};display:inline-block;margin-left:4px;flex-shrink:0"></span>`:'';
+
+  // 1. Find all nodes connected to this process
+  const connected = (n.connections||[]).map(cid => state.nodes.find(x => x.id === cid)).filter(Boolean);
+  
+  let subsHtml = '';
+  let arrowHtml = `<span style="display:inline-block;width:14px;margin-right:2px;"></span>`; // Placeholder for alignment
+
+  // 2. If it has connections, create the dropdown arrow and the hidden list
+  if (connected.length > 0) {
+    arrowHtml = `<span id="arr-${n.id}" onclick="toggleConn(event, '${n.id}')" style="display:inline-block;width:14px;margin-right:2px;font-size:9px;color:var(--text3);transition:transform 0.15s;cursor:pointer;text-align:center;">▶</span>`;
+    
+    subsHtml = `<div id="conn-${n.id}" class="node-children" style="display:none; margin-top:0; padding-top:4px; padding-bottom:4px;">`;
+    connected.forEach(cn => {
+      // We also make the child nodes clickable so you can open their PFMEA directly
+      subsHtml += `<div class="node-row" onclick="selectNode('${cn.id}')" style="padding:5px 12px;">
+        <div class="node-dot" style="background:var(--comp);width:6px;height:6px;"></div>
+        <div class="node-label" style="font-size:11px;color:var(--text2)">${esc(cn.name)}</div>
+      </div>`;
+    });
+    subsHtml += `</div>`;
+  }
+
   return `<div class="tree-node fade-in">
     <div class="node-row${act}" onclick="selectNode('${n.id}')">
+      ${arrowHtml}
       <div class="node-dot" style="background:var(--accent)"></div>
       <div class="node-label" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">${esc(n.name)}${apDot}</div>
       <div class="node-actions">
@@ -782,6 +806,7 @@ function renderFlatNode(n){
         <button class="node-btn" title="Delete" onclick="event.stopPropagation();deleteNode('${n.id}')" style="color:var(--red)">✕</button>
       </div>
     </div>
+    ${subsHtml}
   </div>`;
 }
 
