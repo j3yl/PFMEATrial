@@ -1,11 +1,3 @@
-<!--
-v3.4.0: "Eliminated" invisible ceiling in Chart view, retained "Fit" button functionaliy
-
-v3.3.0: Updated mouse control in Chart View. Middle-mouse to pan, shift click for group selection
-
-v3.2.0: Ammended arrow style for visual cohesiveness. Block-block snapping instead of block-grid snapping
--->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,6 +5,7 @@ v3.2.0: Ammended arrow style for visual cohesiveness. Block-block snapping inste
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>PFMEA Manager</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
 <style>
   :root {
     --bg: #0f1117;
@@ -60,7 +53,7 @@ v3.2.0: Ammended arrow style for visual cohesiveness. Block-block snapping inste
   .main { display:flex; flex:1; overflow:hidden; height:calc(100vh - 56px); }
 
   /* Left panel */
-  .panel-left { width:440px; min-width:280px; max-width:1200px; background:var(--bg2); border-right:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden;}
+  .panel-left { width:440px; min-width:280px; max-width:1200px; background:var(--bg2); border-right:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; }
 
   .panel-header { padding:12px 14px 10px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; flex-shrink:0; }
   .panel-title { font-size:13px; font-weight:600; color:var(--text); flex:1; }
@@ -358,6 +351,7 @@ v3.2.0: Ammended arrow style for visual cohesiveness. Block-block snapping inste
               </div>
             </div>
           </div>
+          <button class="btn btn-ghost btn-sm" onclick="exportChartImage()">📷 Export Image</button>
           <button class="btn btn-ghost btn-sm" onclick="fitChart()">⊡ Fit</button>
           <button class="btn btn-ghost btn-sm" id="connect-btn" onclick="toggleConnectMode()" title="Click a source node then a target node to connect them">⇢ Connect</button>
           <button class="btn btn-ghost btn-sm" onclick="zoomBy(1.2)" title="Zoom in">＋</button>
@@ -844,7 +838,7 @@ function initChartInteraction(){
     if(!world) return;
     const wr=world.getBoundingClientRect();
     
-    // Group Dragging & Snapping (REMOVED Math.max limits for infinite canvas)
+    // Group Dragging & Snapping
     if(_draggingNodes && _draggingNodes.length > 0){
       _draggingNodes.forEach(dn => {
         let rawX = (e.clientX-wr.left)/_zoom - dn.offX;
@@ -1257,27 +1251,32 @@ function showCtx(x,y,n){
 }
 function closeCtx(){ if(_ctx){_ctx.remove();_ctx=null;} }
 
-function fitChart() {
-  const vp = document.getElementById('chart-viewport');
-  if (!vp || !state.nodes.length) { _panX = 40; _panY = 40; _zoom = 1; applyTransform(); return; }
+function fitChart(){
+  const vp=document.getElementById('chart-viewport');
+  if(!vp) return;
+  if(!state.nodes || !state.nodes.length) { _panX=40;_panY=40;_zoom=1;applyTransform();return; }
   
-  // Calculate dynamic bounding box of all nodes
-  let minX = Math.min(...state.nodes.map(n => n.x));
-  let minY = Math.min(...state.nodes.map(n => n.y));
-  let maxX = Math.max(...state.nodes.map(n => n.x + BW));
-  let maxY = Math.max(...state.nodes.map(n => n.y + BH));
+  // Dynamic Bounding Box Calculation
+  let minX = Math.min(...state.nodes.map(n=>n.x));
+  let minY = Math.min(...state.nodes.map(n=>n.y));
+  let maxX = Math.max(...state.nodes.map(n=>n.x + BW));
+  let maxY = Math.max(...state.nodes.map(n=>n.y + BH));
   
-  // Add padding
-  minX -= PAD; minY -= PAD; maxX += PAD; maxY += PAD;
+  // Add visual padding around the edges
+  minX -= PAD; minY -= PAD;
+  maxX += PAD; maxY += PAD;
+  
   const contentW = maxX - minX;
   const contentH = maxY - minY;
   
-  const vpW = vp.clientWidth, vpH = vp.clientHeight;
-  _zoom = Math.min(vpW / contentW, vpH / contentH, 1) * 0.92;
+  const vpW=vp.clientWidth, vpH=vp.clientHeight;
+  const scaleX=vpW/contentW, scaleY=vpH/contentH;
   
-  // Center the view on the calculated bounding box
-  _panX = (vpW - contentW * _zoom) / 2 - (minX * _zoom);
-  _panY = (vpH - contentH * _zoom) / 2 - (minY * _zoom);
+  _zoom=Math.min(scaleX,scaleY,1)*0.92;
+  
+  // Calculate center offset including dynamic minimum coordinates
+  _panX=(vpW-contentW*_zoom)/2 - (minX * _zoom);
+  _panY=(vpH-contentH*_zoom)/2 - (minY * _zoom);
   applyTransform();
 }
 
@@ -2088,12 +2087,11 @@ function toggleTips(){ tipsOpen=!tipsOpen; document.getElementById('tips-panel')
 
 const resizer = document.getElementById('resizer'), panelLeft = document.getElementById('panel-left');
 let resizing = false;
-resizer.addEventListener('mousedown', () => { resizing = true; resizer.classList.add('dragging'); document.body.style.userSelect='none'; });
+resizer.addEventListener('mousedown', () => { resizing = true; resizer.classList.add('dragging'); document.body.style.cursor='col-resize'; document.body.style.userSelect='none'; });
 
 window.addEventListener('mousemove', e => { 
   if (!resizing) return; 
   let w = e.clientX; 
-  // Clamping prevents jamming by staying responsive even at edge
   if (w < 280) w = 280;
   if (w > 1200) w = 1200;
   panelLeft.style.width = w + 'px'; 
@@ -2103,8 +2101,8 @@ window.addEventListener('mouseup', () => {
   if (resizing) {
     resizing = false; 
     resizer.classList.remove('dragging'); 
+    document.body.style.cursor = ''; 
     document.body.style.userSelect = ''; 
-    // Re-center chart when resize ends to match new viewport
     if (currentView === 'chart') fitChart();
   }
 });
@@ -2112,6 +2110,49 @@ window.addEventListener('mouseup', () => {
 document.addEventListener('contextmenu',e=>{ if(!e.target.closest('.fc-node')) closeCtx(); });
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+// ═══════════════════════════════════
+//  IMAGE EXPORT
+// ═══════════════════════════════════
+function exportChartImage() {
+  if (typeof htmlToImage === 'undefined') {
+    alert('Image library is still loading... please try again in a moment.');
+    return;
+  }
+
+  const canvasElement = document.getElementById('chart-canvas');
+  const selBox = document.getElementById('selection-box');
+  
+  // Hide the selection box temporarily so it doesn't appear in the image
+  const originalDisplay = selBox.style.display;
+  selBox.style.display = 'none';
+
+  // Deselect nodes for a clean snapshot
+  const previouslySelected = [...selectedNodes];
+  selectedNodes = [];
+  updateSelectionVisuals();
+
+  // Capture the canvas with the dark theme background color
+  htmlToImage.toPng(canvasElement, { backgroundColor: '#0f1117' })
+    .then(function (dataUrl) {
+      const link = document.createElement('a');
+      link.download = (state.project.name || 'PFMEA_Flowchart') + '.png';
+      link.href = dataUrl;
+      link.click();
+
+      selBox.style.display = originalDisplay;
+      selectedNodes = previouslySelected;
+      updateSelectionVisuals();
+    })
+    .catch(function (error) {
+      console.error('Export failed:', error);
+      alert('Failed to export image. Check console for details.');
+      
+      selBox.style.display = originalDisplay;
+      selectedNodes = previouslySelected;
+      updateSelectionVisuals();
+    });
+}
 
 // ═══════════════════════════════════
 //  INIT
