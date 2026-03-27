@@ -757,11 +757,17 @@ function renderTree(){
   const row=document.getElementById('project-root-row');
   row.className='node-row'+(selectedNodeId===null?' active':'');
   const body=document.getElementById('tree-body');
-  if(!state.nodes.length){
-    body.innerHTML='<div style="text-align:center;color:var(--text3);font-size:12px;padding:20px 10px">No nodes yet.<br>Click <strong>+ Add</strong> to create one.</div>';
+  
+  // Filter the nodes to only show processes (and generic top-level nodes)
+  const processNodes = state.nodes.filter(n => n.type === 'process' || n.type === 'node');
+
+  if(!processNodes.length){
+    body.innerHTML='<div style="text-align:center;color:var(--text3);font-size:12px;padding:20px 10px">No processes yet.<br>Click <strong>+ Add</strong> to create one.</div>';
     return;
   }
-  body.innerHTML=state.nodes.map(n=>renderFlatNode(n)).join('');
+  
+  // Render only the filtered list
+  body.innerHTML=processNodes.map(n=>renderFlatNode(n)).join('');
 }
 function renderFlatNode(n){
   const act=selectedNodeId===n.id?' active':'';
