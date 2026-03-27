@@ -1,25 +1,10 @@
-<!--
-  PFMEA Manager
-  Version: 3.0.0
-
-  Changelog (last 3 versions):
-  v3.0.0 — Major: chart view replaced with free-form flowchart. Nodes are
-           now generic (user-labelled). Drag to reposition, click ⇢ Connect
-           then click source+target to draw arrows. Cross-connections
-           supported. List view shows flat node list with shared-by badge.
-  v2.1.1 — Split File button into main action (Export Excel) and a ▾ chevron
-           for the full dropdown menu.
-  v2.1.0 — Merged Export and Import into a single File dropdown button in the
-           topbar. Excel export moved from PFMEA header into the File dropdown.
-
--->
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>PFMEA Manager</title>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.min.js"></script>
 <style>
   :root {
     --bg: #0f1117;
@@ -134,8 +119,7 @@
   #chart-viewport.connect-mode { cursor:crosshair; }
   .fc-node.connect-source { border-color:var(--accent) !important; box-shadow:0 0 0 4px rgba(79,126,248,.5) !important; }
   .fc-node.connect-hover  { border-color:var(--green)  !important; box-shadow:0 0 0 4px rgba(52,199,123,.4) !important; }
-  /* Delete connection button on SVG lines — handled in JS */
-  .conn-del-btn { position:absolute; background:var(--bg3); border:1px solid var(--border2); border-radius:50%; width:18px; height:18px; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--red); z-index:20; }
+  
   /* Flowchart node boxes */
   .fc-node { position:absolute; border:1.5px solid var(--border2); border-radius:8px; background:var(--bg2); cursor:pointer; transition:border-color .15s, box-shadow .15s; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:8px 12px; user-select:none; }
   .fc-node:hover { border-color:var(--accent); box-shadow:0 0 0 3px rgba(79,126,248,.2); }
@@ -174,7 +158,7 @@
 
   table.pfmea { width:100%; border-collapse:collapse; font-size:12px; min-width:1200px; }
   table.pfmea th { background:var(--bg3); color:var(--text2); font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.3px; padding:7px 8px; border-bottom:1px solid var(--border); white-space:nowrap; border-right:1px solid var(--border); vertical-align:middle; }
-  table.pfmea thead tr:first-child th { position:sticky; top:0; z-index:3; font-size:11px; letter-spacing:.4px; height:36px;}
+  table.pfmea thead tr:first-child th { position:sticky; top:0; z-index:3; font-size:11px; letter-spacing:.4px; height:36px; }
   table.pfmea thead tr:first-child th[colspan] { border-bottom:none; }
   table.pfmea thead tr:last-child th { position:sticky; top:36px; z-index:2; }
   table.pfmea th.th-vert { width:36px; min-width:36px; max-width:36px; padding:8px 4px; white-space:normal; vertical-align:bottom; }
@@ -192,12 +176,12 @@
   .rpn-high { background:rgba(239,68,68,.2); color:var(--red); }
   .rpn-med { background:rgba(245,158,11,.2); color:var(--amber); }
   .rpn-low { background:rgba(52,199,123,.2); color:var(--green); }
-  .row-num { color:var(--text3); font-size:11px; text-align:center; padding:7px 6px; user-select:none; }
+  
   /* Level indicator cell */
   .level-cell { padding:6px 4px; vertical-align:top; text-align:left; white-space:nowrap; width:60px; min-width:60px; }
   .level-dot-wrap { display:flex; align-items:flex-start; justify-content:center; padding-top:6px; }
   .level-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
-  .level-label { font-size:9px; font-weight:700; letter-spacing:.3px; margin-top:3px; opacity:.7; }
+  
   /* Group separator row */
   tr.group-sep td { padding:0; height:3px; border:none; }
   tr.group-header td { padding:4px 8px; font-size:10px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; border-bottom:1px solid var(--border); vertical-align:middle; }
@@ -245,42 +229,18 @@
   @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
 
   /* Scope definition header */
-  .scope-header {
-    border:1px solid var(--border2); border-collapse:collapse;
-    width:100%; font-size:11px; margin-bottom:0; background:var(--bg2);
-    flex-shrink:0;
-  }
-  .scope-header td {
-    border:1px solid var(--border2); padding:0; vertical-align:middle;
-  }
-  .scope-header .sh-label {
-    padding:5px 10px; color:var(--text2); font-weight:600;
-    white-space:nowrap; width:1%; background:var(--bg3);
-  }
-  .scope-header .sh-val input {
-    width:100%; background:transparent; border:none; outline:none;
-    color:var(--text); font-size:11px; font-family:var(--font);
-    padding:5px 8px; min-width:120px;
-  }
+  .scope-header { border:1px solid var(--border2); border-collapse:collapse; width:100%; font-size:11px; margin-bottom:0; background:var(--bg2); flex-shrink:0; }
+  .scope-header td { border:1px solid var(--border2); padding:0; vertical-align:middle; }
+  .scope-header .sh-label { padding:5px 10px; color:var(--text2); font-weight:600; white-space:nowrap; width:1%; background:var(--bg3); }
+  .scope-header .sh-val input { width:100%; background:transparent; border:none; outline:none; color:var(--text); font-size:11px; font-family:var(--font); padding:5px 8px; min-width:120px; }
   .scope-header .sh-val input:focus { background:rgba(79,126,248,.08); }
   .scope-wrap { flex-shrink:0; padding:0; display:none; }
 
   /* Add dropdown */
   .add-dropdown-wrap { position:relative; }
-  .add-dropdown {
-    position:absolute; top:calc(100% + 6px); right:0;
-    background:var(--bg2); border:1px solid var(--border2);
-    border-radius:10px; padding:6px; z-index:500;
-    min-width:220px; box-shadow:var(--shadow);
-    opacity:0; pointer-events:none; transform:translateY(-6px);
-    transition:opacity .15s, transform .15s;
-  }
+  .add-dropdown { position:absolute; top:calc(100% + 6px); right:0; background:var(--bg2); border:1px solid var(--border2); border-radius:10px; padding:6px; z-index:500; min-width:220px; box-shadow:var(--shadow); opacity:0; pointer-events:none; transform:translateY(-6px); transition:opacity .15s, transform .15s; }
   .add-dropdown.open { opacity:1; pointer-events:all; transform:translateY(0); }
-  .add-dd-item {
-    display:flex; align-items:center; gap:10px;
-    padding:9px 12px; border-radius:7px; cursor:pointer;
-    transition:background .1s;
-  }
+  .add-dd-item { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:7px; cursor:pointer; transition:background .1s; }
   .add-dd-item:hover { background:var(--bg3); }
   .add-dd-icon { width:28px; height:28px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; }
   .add-dd-label { font-size:13px; font-weight:500; color:var(--text); }
@@ -289,20 +249,9 @@
 
   /* File dropdown in topbar */
   .file-dropdown-wrap { position:relative; }
-  .file-dropdown {
-    position:absolute; top:calc(100% + 6px); right:0;
-    background:var(--bg2); border:1px solid var(--border2);
-    border-radius:10px; padding:6px; z-index:500;
-    min-width:200px; box-shadow:var(--shadow);
-    opacity:0; pointer-events:none; transform:translateY(-6px);
-    transition:opacity .15s, transform .15s;
-  }
+  .file-dropdown { position:absolute; top:calc(100% + 6px); right:0; background:var(--bg2); border:1px solid var(--border2); border-radius:10px; padding:6px; z-index:500; min-width:200px; box-shadow:var(--shadow); opacity:0; pointer-events:none; transform:translateY(-6px); transition:opacity .15s, transform .15s; }
   .file-dropdown.open { opacity:1; pointer-events:all; transform:translateY(0); }
-  .file-dd-item {
-    display:flex; align-items:center; gap:10px;
-    padding:8px 12px; border-radius:7px; cursor:pointer;
-    transition:background .1s; font-size:13px; color:var(--text2);
-  }
+  .file-dd-item { display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:7px; cursor:pointer; transition:background .1s; font-size:13px; color:var(--text2); }
   .file-dd-item:hover { background:var(--bg3); color:var(--text); }
   .file-dd-icon { font-size:15px; width:20px; text-align:center; flex-shrink:0; }
   .file-dd-label { font-size:13px; font-weight:500; color:var(--text); }
@@ -362,7 +311,6 @@
       </div>
     </div>
 
-    <!-- LIST VIEW -->
     <div id="list-view">
       <div style="padding:14px">
         <div class="tree-node">
@@ -376,7 +324,6 @@
       </div>
     </div>
 
-    <!-- CHART VIEW -->
     <div id="chart-view">
       <div class="chart-toolbar">
         <span class="chart-hint">Scroll to zoom · Drag to pan · Right-click a node for options</span>
@@ -407,7 +354,6 @@
       </div>
       <div id="chart-viewport">
         <div id="zoom-badge">100%</div>
-        <!-- Floating PFMEA drawer (chart mode only) -->
         <div id="chart-pfmea-drawer">
           <div class="drawer-header">
             <div>
@@ -494,7 +440,7 @@
       </div>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
         <span id="rpn-summary" style="font-size:12px;color:var(--text2)"></span>
-<button class="btn btn-ghost btn-sm" onclick="addPfmeaRow()">+ Add Row</button>
+        <button class="btn btn-ghost btn-sm" onclick="addPfmeaRow()">+ Add Row</button>
       </div>
     </div>
     <div class="pfmea-empty" id="pfmea-empty">
@@ -594,7 +540,6 @@
   </div>
 </div>
 
-<!-- ADD MODAL -->
 <div class="modal-bg" id="add-modal">
   <div class="modal">
     <div class="modal-title" id="add-modal-title">Add Process</div>
@@ -621,7 +566,6 @@
   </div>
 </div>
 
-<!-- PROJECT MODAL -->
 <div class="modal-bg" id="project-modal">
   <div class="modal">
     <div class="modal-title">Project Settings</div>
@@ -674,9 +618,9 @@ let state = { project:{ name:'New Project', part:'', rev:'', author:'', pfmea:[]
 let selectedNodeId = null; // null = project level
 let currentView = 'list';
 let addCtx = { type:null, parentId:null };
-// Connect mode: user clicks source then target
 let _connectMode = false;
 let _connectSource = null;
+let _expandedNodes = new Set(); // Stateful memory for open list dropdowns
 
 function genId(){ return '_'+Math.random().toString(36).slice(2,9); }
 
@@ -684,7 +628,6 @@ function getRPN(row,after=false){
   const s=after?+row.sev2||0:+row.sev||0, o=after?+row.occ2||0:+row.occ||0, d=after?+row.det2||0:+row.det||0;
   return (s&&o&&d)?s*o*d:0;
 }
-// AIAG-VDA AP: H if S>=9, or (S>=7 and O>=4), or SOD>=100; M if SOD>=40 or S>=7; else L
 function getAP(row,after=false){
   const s=after?+row.sev2||0:+row.sev||0;
   const o=after?+row.occ2||0:+row.occ||0;
@@ -712,7 +655,6 @@ function findNode(id){
   return n ? {node:n, type:'node'} : null;
 }
 function getAllNodes(){ return state.nodes; }
-// Who connects TO a given node id (incoming connections)
 function incomingNodes(id){ return state.nodes.filter(n=>(n.connections||[]).includes(id)); }
 
 // ═══════════════════════════════════
@@ -726,10 +668,8 @@ function setView(v){
   document.getElementById('list-view').style.display=v==='list'?'block':'none';
   document.getElementById('chart-view').style.display=v==='chart'?'flex':'none';
   document.getElementById('add-dropdown-wrap').style.display=v==='list'?'':'none';
-  // Expand panel to full width in chart mode; restore in list mode
   if(v==='list'){
     closeDrawer();
-    // Restore right panel for the currently selected node
     if(selectedNodeId===null){
       const n=state.project;
       showPfmea(n,'Project',n.name||'Project');
@@ -749,10 +689,8 @@ function setView(v){
 }
 
 // ═══════════════════════════════════
-//  LIST VIEW
+//  LIST VIEW (Refactored for Memory & Filtering)
 // ═══════════════════════════════════
-let _expandedNodes = new Set();
-
 function renderTree(){
   const lbl=state.project.name||'Project';
   document.getElementById('project-root-label').textContent=lbl;
@@ -760,7 +698,7 @@ function renderTree(){
   row.className='node-row'+(selectedNodeId===null?' active':'');
   const body=document.getElementById('tree-body');
   
-  // Filter the nodes to only show processes (and generic top-level nodes)
+  // Only show top level items in list view
   const processNodes = state.nodes.filter(n => n.type === 'process' || n.type === 'node');
 
   if(!processNodes.length){
@@ -768,8 +706,14 @@ function renderTree(){
     return;
   }
   
-  // Render only the filtered list
   body.innerHTML=processNodes.map(n=>renderFlatNode(n)).join('');
+}
+
+function toggleConn(e, id) {
+  e.stopPropagation();
+  if (_expandedNodes.has(id)) _expandedNodes.delete(id);
+  else _expandedNodes.add(id);
+  renderTree();
 }
 
 function renderFlatNode(n){
@@ -777,14 +721,12 @@ function renderFlatNode(n){
   const ap = nodeMaxAP(n);
   const apDot = ap ? `<span style="width:8px;height:8px;border-radius:50%;background:${ap==='H'?'var(--red)':ap==='M'?'var(--amber)':'var(--green)'};display:inline-block;margin-left:4px;flex-shrink:0"></span>` : '';
 
-  // Find all nodes connected to this process
   const connected = (n.connections||[]).map(cid => state.nodes.find(x => x.id === cid)).filter(Boolean);
   
   let subsHtml = '';
   let arrowHtml = `<span style="display:inline-block;width:14px;margin-right:2px;"></span>`;
 
   if (connected.length > 0) {
-    // Check our memory to see if this node should be open
     const isOpen = _expandedNodes.has(n.id);
     const rot = isOpen ? '90deg' : '0deg';
     const disp = isOpen ? 'block' : 'none';
@@ -793,7 +735,6 @@ function renderFlatNode(n){
     
     subsHtml = `<div class="node-children" style="display:${disp}; margin-top:0; padding-top:4px; padding-bottom:4px;">`;
     connected.forEach(cn => {
-      // Highlight the child if it is currently selected
       const childAct = selectedNodeId === cn.id ? ' active' : '';
       subsHtml += `<div class="node-row${childAct}" onclick="selectNode('${cn.id}')" style="padding:5px 12px; margin-bottom: 2px;">
         <div class="node-dot" style="background:var(--comp);width:6px;height:6px;"></div>
@@ -802,32 +743,6 @@ function renderFlatNode(n){
     });
     subsHtml += `</div>`;
   }
-
-  return `<div class="tree-node fade-in">
-    <div class="node-row${act}" onclick="selectNode('${n.id}')">
-      ${arrowHtml}
-      <div class="node-dot" style="background:var(--accent)"></div>
-      <div class="node-label" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">${esc(n.name)}${apDot}</div>
-      <div class="node-actions">
-        <button class="node-btn" title="Rename" onclick="event.stopPropagation();renameNode('${n.id}')">✎</button>
-        <button class="node-btn" title="Delete" onclick="event.stopPropagation();deleteNode('${n.id}')" style="color:var(--red)">✕</button>
-      </div>
-    </div>
-    ${subsHtml}
-  </div>`;
-}
-
-function toggleConn(e, id) {
-  e.stopPropagation(); // Prevents clicking the main process row
-  
-  if (_expandedNodes.has(id)) {
-    _expandedNodes.delete(id); // Close it
-  } else {
-    _expandedNodes.add(id); // Open it
-  }
-  
-  renderTree(); // Redraw the list with the new state
-}
 
   return `<div class="tree-node fade-in">
     <div class="node-row${act}" onclick="selectNode('${n.id}')">
@@ -863,21 +778,18 @@ function initChartInteraction(){
   if(!vp||vp._pfmeaInit) return;
   vp._pfmeaInit=true;
 
-  // Wheel → zoom toward cursor
   vp.addEventListener('wheel', e=>{
     e.preventDefault();
     const rect=vp.getBoundingClientRect();
     const mx=e.clientX-rect.left, my=e.clientY-rect.top;
     const delta=e.deltaY<0?1.1:0.91;
     const newZoom=Math.min(MAX_ZOOM,Math.max(MIN_ZOOM,_zoom*delta));
-    // Shift pan so the point under cursor stays fixed
     _panX=mx-(mx-_panX)*(newZoom/_zoom);
     _panY=my-(my-_panY)*(newZoom/_zoom);
     _zoom=newZoom;
     applyTransform();
   },{passive:false});
 
-  // Mousedown → start pan (only if not on a node)
   vp.addEventListener('mousedown',e=>{
     if(e.target.closest('.fc-node')) return;
     _isPanning=true; _startX=e.clientX; _startY=e.clientY;
@@ -895,7 +807,6 @@ function initChartInteraction(){
     if(_isPanning){ _isPanning=false; document.getElementById('chart-viewport')?.classList.remove('panning'); }
   });
 
-  // Touch pan
   let _t0=null;
   vp.addEventListener('touchstart',e=>{ if(e.touches.length===1){ _t0=e.touches[0]; _startPanX=_panX; _startPanY=_panY; }},{passive:true});
   vp.addEventListener('touchmove',e=>{
@@ -907,7 +818,6 @@ function initChartInteraction(){
   },{passive:true});
   vp.addEventListener('touchend',()=>{ _t0=null; });
 
-  // Pinch zoom
   let _initDist=0,_initZoom=1;
   vp.addEventListener('touchstart',e=>{
     if(e.touches.length===2){
@@ -925,7 +835,7 @@ function initChartInteraction(){
 }
 
 // ═══════════════════════════════════
-//  CHART VIEW — free-form flowchart
+//  CHART VIEW
 // ═══════════════════════════════════
 const BW=140, BH=54, PAD=60;
 let _draggingNode=null, _dragOffX=0, _dragOffY=0;
@@ -935,13 +845,11 @@ function renderChart(){
   const svg=document.getElementById('chart-svg');
   nodesDiv.innerHTML=''; svg.innerHTML='';
 
-  // Auto-position new nodes that have no position yet
   state.nodes.forEach((n,i)=>{
     if(n.x==null) n.x = PAD + (i%4)*180;
     if(n.y==null) n.y = PAD + Math.floor(i/4)*120;
   });
 
-  // Canvas size
   const maxX=Math.max(600,...state.nodes.map(n=>n.x+BW))+PAD;
   const maxY=Math.max(400,...state.nodes.map(n=>n.y+BH))+PAD;
   const canvas=document.getElementById('chart-canvas');
@@ -949,14 +857,12 @@ function renderChart(){
   svg.setAttribute('width',maxX); svg.setAttribute('height',maxY);
   _chartW=maxX; _chartH=maxY;
 
-  // Arrow marker
   svg.innerHTML=`<defs>
     <marker id="arrh" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="7" markerHeight="7" orient="auto">
       <path d="M1 1L9 4L1 7" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
     </marker>
   </defs>`;
 
-  // Draw connections
   const byId={};
   state.nodes.forEach(n=>byId[n.id]=n);
   state.nodes.forEach(src=>{
@@ -968,23 +874,23 @@ function renderChart(){
       let x1, y1, x2, y2, cx1, cy1, cx2, cy2;
       const offset = 50;
 
-      if (Math.abs(dx) > Math.abs(dy)) { // Horizontal
+      if (Math.abs(dx) > Math.abs(dy)) { 
         y1 = srcCy; y2 = tgtCy;
         cy1 = y1; cy2 = y2;
-        if (dx > 0) { // Right
+        if (dx > 0) { 
             x1 = src.x + BW; x2 = tgt.x;
             cx1 = x1 + offset; cx2 = x2 - offset;
-        } else { // Left
+        } else { 
             x1 = src.x; x2 = tgt.x + BW;
             cx1 = x1 - offset; cx2 = x2 + offset;
         }
-      } else { // Vertical
+      } else { 
         x1 = srcCx; x2 = tgtCx;
         cx1 = x1; cx2 = x2;
-        if (dy > 0) { // Down
+        if (dy > 0) { 
             y1 = src.y + BH; y2 = tgt.y;
             cy1 = y1 + offset; cy2 = y2 - offset;
-        } else { // Up
+        } else { 
             y1 = src.y; y2 = tgt.y + BH;
             cy1 = y1 - offset; cy2 = y2 + offset;
         }
@@ -1004,7 +910,6 @@ function renderChart(){
     });
   });
 
-  // Draw nodes
   state.nodes.forEach(n=>{
     const isActive=selectedNodeId===n.id;
     const isConnSrc=_connectMode && _connectSource===n.id;
@@ -1014,7 +919,6 @@ function renderChart(){
     div.style.width=BW+'px'; div.style.minHeight=BH+'px';
     div.dataset.id=n.id;
 
-    // AP dot
     const ap=nodeMaxAP(n);
     if(ap){
       const dot=document.createElement('div');
@@ -1023,7 +927,6 @@ function renderChart(){
       div.appendChild(dot);
     }
 
-    // Add node type label
     if (n.type && ['process', 'comp', 'sub'].includes(n.type)) {
         const typeLabel = document.createElement('div');
         const typeMap = { process: 'Process', comp: 'Component', sub: 'Sub-component' };
@@ -1043,7 +946,6 @@ function renderChart(){
     const nm=document.createElement('div'); nm.className='fc-node-name'; nm.textContent=n.name;
     div.appendChild(nm);
 
-    // Click: connect mode or select
     div.addEventListener('click',e=>{
       e.stopPropagation();
       if(_connectMode){
@@ -1060,11 +962,9 @@ function renderChart(){
       div.classList.add('fc-active');
     });
 
-    // Hover highlight in connect mode
     div.addEventListener('mouseenter',()=>{ if(_connectMode&&_connectSource&&_connectSource!==n.id) div.classList.add('connect-hover'); });
     div.addEventListener('mouseleave',()=>div.classList.remove('connect-hover'));
 
-    // Drag to move
     div.addEventListener('mousedown',e=>{
       if(e.button!==0||_connectMode) return;
       _draggingNode=n;
@@ -1100,7 +1000,6 @@ function exitConnectMode(){
 }
 function toggleConnectMode(){ _connectMode?exitConnectMode():enterConnectMode(); }
 
-// Mouse drag handler (world-level)
 window.addEventListener('mousemove',e=>{
   if(_draggingNode){
     const world=document.getElementById('chart-world');
@@ -1108,7 +1007,6 @@ window.addEventListener('mousemove',e=>{
     const wr=world.getBoundingClientRect();
     _draggingNode.x=Math.max(0,(e.clientX-wr.left)/_zoom-_dragOffX);
     _draggingNode.y=Math.max(0,(e.clientY-wr.top)/_zoom-_dragOffY);
-    // Move the div directly for perf, re-render SVG lines
     const div=document.querySelector(`.fc-node[data-id="${_draggingNode.id}"]`);
     if(div){ div.style.left=_draggingNode.x+'px'; div.style.top=_draggingNode.y+'px'; }
     renderConnections();
@@ -1117,11 +1015,9 @@ window.addEventListener('mousemove',e=>{
 window.addEventListener('mouseup',()=>{ if(_draggingNode){ saveState(); _draggingNode=null; } });
 
 function renderConnections(){
-  // Lightweight redraw of SVG lines only (no DOM nodes rebuild)
   const svg=document.getElementById('chart-svg'); if(!svg) return;
   const byId={};
   state.nodes.forEach(n=>byId[n.id]=n);
-  // Remove old paths
   svg.querySelectorAll('.conn-path').forEach(p=>p.remove());
   state.nodes.forEach(src=>{
     (src.connections||[]).forEach(tid=>{
@@ -1132,23 +1028,23 @@ function renderConnections(){
       let x1, y1, x2, y2, cx1, cy1, cx2, cy2;
       const offset = 50;
 
-      if (Math.abs(dx) > Math.abs(dy)) { // Horizontal
+      if (Math.abs(dx) > Math.abs(dy)) { 
         y1 = srcCy; y2 = tgtCy;
         cy1 = y1; cy2 = y2;
-        if (dx > 0) { // Right
+        if (dx > 0) { 
             x1 = src.x + BW; x2 = tgt.x;
             cx1 = x1 + offset; cx2 = x2 - offset;
-        } else { // Left
+        } else { 
             x1 = src.x; x2 = tgt.x + BW;
             cx1 = x1 - offset; cx2 = x2 + offset;
         }
-      } else { // Vertical
+      } else { 
         x1 = srcCx; x2 = tgtCx;
         cx1 = x1; cx2 = x2;
-        if (dy > 0) { // Down
+        if (dy > 0) { 
             y1 = src.y + BH; y2 = tgt.y;
             cy1 = y1 + offset; cy2 = y2 - offset;
-        } else { // Up
+        } else { 
             y1 = src.y; y2 = tgt.y + BH;
             cy1 = y1 - offset; cy2 = y2 + offset;
         }
@@ -1189,7 +1085,6 @@ function showCtx(x,y,n){
   document.body.appendChild(m);
   _ctx=m;
 
-  // Adjust if off-screen
   requestAnimationFrame(()=>{
     const r=m.getBoundingClientRect();
     if(r.right>window.innerWidth) m.style.left=(x-r.width)+'px';
@@ -1244,7 +1139,6 @@ function selectNode(id){
 }
 function showPfmea(node,typeLabel,name){
   if(currentView==='chart'){
-    // Drawer disabled — just cache state for when user switches back to list
     document.getElementById('pfmea-title').textContent=name;
     document.getElementById('pfmea-subtitle').textContent=`${typeLabel} · PFMEA (cumulative)`;
     document.getElementById('pfmea-header').style.display='flex';
@@ -1271,20 +1165,16 @@ function closeDrawer(){
 }
 
 // ═══════════════════════════════════
-//  PFMEA TABLE — cumulative hierarchy
+//  PFMEA TABLE
 // ═══════════════════════════════════
-
-// Level metadata
 const LEVEL_META = {
   project: { color:'var(--amber)',    label:'PRJ', depth:0 },
   node:    { color:'var(--accent)',   label:'NODE', depth:1 },
-  // Legacy types kept for migration compatibility
   process: { color:'var(--process)',  label:'PRC', depth:1 },
   comp:    { color:'var(--comp)',     label:'CMP', depth:2 },
   sub:     { color:'var(--sub)',      label:'SUB', depth:3 },
 };
 
-// Collect all rows reachable from a nodeId (or all nodes if null), deduped
 function collectRows(nodeId){
   const entries=[];
   const seen=new Set();
@@ -1296,7 +1186,6 @@ function collectRows(nodeId){
     node.pfmea.forEach(row=>{
       entries.push({row, nodeRef:node, nodeId:node.id, nodeName:node.name||'', nodeType:'node'});
     });
-    // Walk downstream connections
     (node.connections||[]).forEach(cid=>{
       const cn=state.nodes.find(n=>n.id===cid);
       if(cn) addNode(cn);
@@ -1304,7 +1193,6 @@ function collectRows(nodeId){
   }
 
   if(nodeId===null){
-    // Project level: add project rows, then all nodes
     if(!state.project.pfmea) state.project.pfmea=[];
     state.project.pfmea.forEach(row=>{
       entries.push({row, nodeRef:state.project, nodeId:'__project__', nodeName:state.project.name||'Project', nodeType:'project'});
@@ -1319,16 +1207,13 @@ function collectRows(nodeId){
 
 function renderPfmeaTable(node){
   if(!node.pfmea) node.pfmea=[];
-  // Build cumulative list tagged by source
   const entries=collectRows(selectedNodeId);
 
-  // Group entries by source node for section separators
   let html='';
   let lastNodeId=null;
   let globalIdx=0;
   entries.forEach(entry=>{
     if(entry.nodeId!==lastNodeId){
-      // Section header row
       const m=LEVEL_META[entry.nodeType];
       const indent=m.depth*12;
       html+=`<tr class="group-header"><td colspan="26" style="padding-left:${8+indent}px;border-left:3px solid ${m.color};background:${m.depth===0?'rgba(245,158,11,0.07)':m.depth===1?'rgba(79,126,248,0.07)':m.depth===2?'rgba(124,92,246,0.07)':'rgba(52,199,123,0.07)'};color:var(--text2);">`;
@@ -1346,6 +1231,7 @@ function renderPfmeaTable(node){
   if(mainTbody) mainTbody.innerHTML=html;
   updSummaryFromEntries(entries);
 }
+
 function mkRow(row,i,nodeType,sourceNodeId){
   const ap=getAP(row), ap2=getAP(row,true);
   const apc=apClass(ap), apc2=apClass(ap2);
@@ -1394,6 +1280,7 @@ function mkRow(row,i,nodeType,sourceNodeId){
     <td><button class="del-row-btn" onclick="delRow('${id}')">✕</button></td>
   </tr>`;
 }
+
 function rfRow(rid){
   const entries=collectRows(selectedNodeId);
   const entry=entries.find(e=>e.row.id===rid); if(!entry) return;
@@ -1407,6 +1294,7 @@ function rfRow(rid){
   updSummaryFromEntries(entries); saveState();
   if(currentView==='chart') renderChart();
 }
+
 function updSummaryFromEntries(entries){
   const el=document.getElementById('rpn-summary');
   const el2=document.getElementById('drawer-rpn-summary');
@@ -1421,10 +1309,11 @@ function updSummaryFromEntries(entries){
   if(el) el.textContent=txt;
   if(el2) el2.textContent=txt;
 }
-// Keep legacy alias for any callers
+
 function updSummary(node){
   updSummaryFromEntries(collectRows(selectedNodeId));
 }
+
 function findRowAndNode(rid) {
   let row = (state.project.pfmea || []).find(r => r.id === rid);
   if (row) return { row, node: state.project };
@@ -1434,23 +1323,26 @@ function findRowAndNode(rid) {
   }
   return null;
 }
+
 function updCell(rid,field,val){
   const found = findRowAndNode(rid);
   if(!found) return;
   found.row[field]=val;
   saveState();
 }
+
 function getSelNode(){
   if(selectedNodeId===null) return state.project;
   const res=findNode(selectedNodeId); return res?res.node:null;
 }
+
 function addPfmeaRow(){
   const node=getSelNode(); if(!node) return;
   node.pfmea.push({id:genId(),processItem:'',processStep:'',workElement:'',fnItem:'',fnStep:'',fnWork:'',failEffect:'',sev:'',failMode:'',failCause:'',prevCtrl:'',occ:'',detCtrl:'',det:'',spProdChar:'',prevAction:'',detAction:'',resp:'',date:'',status:'',taken:'',completionDate:'',sev2:'',occ2:'',det2:''});
   renderPfmeaTable(node); saveState();
-  // Scroll both table-wrap and drawer-body to bottom
   ['table-wrap','drawer-body-scroll'].forEach(id=>{const el=document.getElementById(id);if(el)el.scrollTop=999999;});
 }
+
 function delRow(rid){
   if(!confirm('Delete this row?')) return;
   const entries=collectRows(selectedNodeId);
@@ -1462,7 +1354,7 @@ function delRow(rid){
 }
 
 // ═══════════════════════════════════
-//  ADD DROPDOWN
+//  DROPDOWNS
 // ═══════════════════════════════════
 function toggleFileDropdown(e){
   e.stopPropagation();
@@ -1526,11 +1418,13 @@ function openAddModal(type, parentId){
   openModal('add-modal');
   setTimeout(()=>document.getElementById('add-name').focus(),100);
 }
+
 function handleCommonProcessChange(id) {
   if(!id) { document.getElementById('add-name').value = ''; return; }
   const node = state.nodes.find(n => n.id === id);
   if(node) document.getElementById('add-name').value = node.name;
 }
+
 function confirmAdd(){
   const name=document.getElementById('add-name').value.trim();
   if(!name){alert('Please enter a name.');return;}
@@ -1548,6 +1442,7 @@ function confirmAdd(){
   saveState();
   selectNode(nn.id);
 }
+
 function renameNode(id){
   const res=findNode(id); if(!res) return;
   const name=prompt('Rename:',res.node.name);
@@ -1559,10 +1454,10 @@ function renameNode(id){
     saveState();
   }
 }
+
 function deleteNode(id){
   if(!confirm('Delete this node and all its PFMEA data?')) return;
   state.nodes=state.nodes.filter(n=>n.id!==id);
-  // Remove any connections pointing to this node
   state.nodes.forEach(n=>{ n.connections=(n.connections||[]).filter(c=>c!==id); });
   if(selectedNodeId===id){
     selectedNodeId=null;
@@ -1633,19 +1528,10 @@ function exportCurrentXLSX(){
   const typeLabel = {project:'Project',node:'Node',process:'Process',comp:'Component',sub:'Sub-component'};
   const indent = {project:'',node:'  ',process:'  ',comp:'    ',sub:'      '};
 
-  // ── Colour palette ──
-  const COL_STEP2  = '1F3864'; // dark blue
-  const COL_STEP3  = '375623'; // dark green
-  const COL_STEP4  = '7B0000'; // dark red
-  const COL_STEP5  = '7B3F00'; // dark amber
-  const COL_STEP6  = '3A006F'; // dark purple
-  const COL_STEP2L = 'BDD7EE'; // light blue
-  const COL_STEP3L = 'E2EFDA'; // light green
-  const COL_STEP4L = 'FFCCCC'; // light red
-  const COL_STEP5L = 'FFF2CC'; // light amber
-  const COL_STEP6L = 'E8D5FF'; // light purple
-  const COL_SCOPE  = 'D9D9D9'; // light grey for scope labels
-  const COL_HDR    = '2F2F2F'; // near black for col header bg
+  const COL_STEP2  = '1F3864'; const COL_STEP3  = '375623'; const COL_STEP4  = '7B0000';
+  const COL_STEP5  = '7B3F00'; const COL_STEP6  = '3A006F'; const COL_STEP2L = 'BDD7EE';
+  const COL_STEP3L = 'E2EFDA'; const COL_STEP4L = 'FFCCCC'; const COL_STEP5L = 'FFF2CC';
+  const COL_STEP6L = 'E8D5FF'; const COL_SCOPE  = 'D9D9D9'; const COL_HDR    = '2F2F2F';
   const COL_WHITE  = 'FFFFFF';
 
   function cellStyle(bgHex, fgHex, bold, wrapText, vertical){
@@ -1660,14 +1546,14 @@ function exportCurrentXLSX(){
         right:{style:'thin',color:{rgb:'AAAAAA'}}
       }
     };
-    if(vertical==='rotate') style.alignment = {textRotation:90, horizontal:'center', vertical:'bottom', wrapText:false};
+    // 90 DEGREE FIX APPLIED HERE:
+    if(vertical==='rotate') style.alignment = {textRotation:90, horizontal:'center', vertical:'center', wrapText:false};
     return style;
   }
-  function sv(v, style){ return {v:v||'', t:'s', s:style}; }
 
   const ws = {};
   const merges = [];
-  let R = 0; // current row (0-indexed)
+  let R = 0;
 
   function setCell(r, c, value, style){
     const ref = XLSX.utils.encode_cell({r, c});
@@ -1680,18 +1566,14 @@ function exportCurrentXLSX(){
   scopeValStyle.alignment = {horizontal:'left', vertical:'center'};
   scopeLblStyle.alignment = {horizontal:'left', vertical:'center'};
 
-  // ── Rows 0-3: Scope header (3 label+value pairs per row) ──
-  // Each pair: label in col 0, value spans cols 1-3, next label col 4, value spans 5-7, etc.
-  // Total 29 cols (0-28)
   const scopeRows = [
     [['Company Name:', s.company||''], ['Project Name:', pname], ['PFMEA ID Number:', s.pfmeaId||'']],
     [['Plant Location:', s.plant||''], ['PFMEA Start Date:', s.startDate||''], ['Process Responsibility:', s.procResp||'']],
     [['Customer Name:', s.customer||''], ['PFMEA Revision Date:', s.revDate||''], ['Confidentiality Level:', s.confidentiality||'']],
     [['Model Year/Platform:', s.modelYear||''], ['Cross-Functional Team:', s.crossFuncTeam||''], ['', '']],
   ];
-  // No merges — label in col N*2, value in col N*2+1, 3 pairs per row
+  
   scopeRows.forEach((pairs, ri) => {
-    // Fill all 29 cols with empty style first
     for(let c=0;c<29;c++) setCell(ri, c, '', scopeValStyle);
     pairs.forEach((pair, pi) => {
       setCell(ri, pi*2,   pair[0], scopeLblStyle);
@@ -1700,12 +1582,9 @@ function exportCurrentXLSX(){
     R++;
   });
 
-  // ── Row 4: blank ──
   for(let c=0;c<29;c++) setCell(R, c, '', {fill:{patternType:'solid',fgColor:{rgb:'FFFFFF'}},font:{sz:8}});
   R++;
 
-  // ── Row 5: Step group banners ──
-  // Level(0) Name(1) | Step2: 2-4 | Step3: 5-7 | Step4: 8-11 | Step5: 12-16 | Step6: 17-28
   const banners = [
     {label:'', col:0, span:1, bg:COL_HDR},
     {label:'', col:1, span:1, bg:COL_HDR},
@@ -1726,7 +1605,6 @@ function exportCurrentXLSX(){
   });
   R++;
 
-  // ── Row 6: Column headers (vertical text for narrow cols) ──
   const headers = [
     {label:'Level', col:0, bg:COL_HDR, vert:false},
     {label:'Name', col:1, bg:COL_HDR, vert:false},
@@ -1770,7 +1648,7 @@ function exportCurrentXLSX(){
       }
     };
     if(h.vert){
-      style.alignment = {textRotation:255, horizontal:'center', vertical:'bottom', wrapText:false};
+      style.alignment = {textRotation:90, horizontal:'center', vertical:'center', wrapText:false};
     } else {
       style.alignment = {wrapText:true, horizontal:'center', vertical:'center'};
     }
@@ -1778,7 +1656,6 @@ function exportCurrentXLSX(){
   });
   R++;
 
-  // ── Data rows ──
   const apColor = {H:'FF0000', M:'FF9900', L:'00B050', '':'000000'};
   entries.forEach(entry => {
     const row = entry.row;
@@ -1815,11 +1692,9 @@ function exportCurrentXLSX(){
     R++;
   });
 
-  // ── Column widths ──
   const colW = [14,18,18,18,18,22,28,28,22,5,22,22,20,5,20,5,5,6,20,20,14,12,12,20,14,5,5,5,5];
   ws['!cols'] = colW.map(w => ({wch:w}));
 
-  // ── Row heights — header rows taller for vertical text ──
   ws['!rows'] = [];
   for(let i=0;i<R;i++) ws['!rows'][i] = {hpt: i < 4 ? 18 : i===4 ? 6 : i===5 ? 18 : i===6 ? 80 : 40};
 
@@ -1832,7 +1707,6 @@ function exportCurrentXLSX(){
   const fname = (state.project.name||'pfmea').replace(/[^a-z0-9_\-]/gi,'_');
   XLSX.writeFile(wb, fname+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
-
 
 function loadFile(e){
   const f=e.target.files[0]; if(!f) return;
@@ -1857,21 +1731,16 @@ function loadFile(e){
 }
 
 // ═══════════════════════════════════
-//  PERSISTENCE
-// ═══════════════════════════════════
-// ═══════════════════════════════════
 //  SUPABASE CONFIG
 // ═══════════════════════════════════
 const SB_URL = 'https://pqeybolcfjynvjmqqomf.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxZXlib2xjZmp5bnZqbXFxb21mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5ODk0NzMsImV4cCI6MjA4OTU2NTQ3M30.7A-nda50KzdhCh0MAT9OsULpsr6UQ0X82cYFwwXzb5o';
 const SB_HEADERS = {'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation'};
 
-// The single project row id — stored in localStorage just to identify which row to update
 let _sbRowId = localStorage.getItem('pfmea_sb_row_id') || null;
 let _saveTimer = null;
 let _localSaveTimer = null;
 
-// Debounced save — waits 800ms after last change before writing to Supabase
 function saveState(){
   clearTimeout(_localSaveTimer);
   _localSaveTimer = setTimeout(() => {
@@ -1886,13 +1755,11 @@ async function pushToSupabase(){
   try{
     const payload = {name: state.project.name||'New Project', data: state, updated_at: new Date().toISOString()};
     if(_sbRowId){
-      // Update existing row
       const r = await fetch(`${SB_URL}/rest/v1/pfmea_projects?id=eq.${_sbRowId}`, {
         method:'PATCH', headers:SB_HEADERS, body:JSON.stringify(payload)
       });
       if(!r.ok) throw new Error(await r.text());
     } else {
-      // Insert new row
       const r = await fetch(`${SB_URL}/rest/v1/pfmea_projects`, {
         method:'POST', headers:SB_HEADERS, body:JSON.stringify(payload)
       });
@@ -1911,16 +1778,13 @@ async function pushToSupabase(){
 }
 
 function migrateState(){
-  // Migrate old hierarchy data (processes/components/subs) to flat nodes
   if(!state.nodes && state.processes){
     state.nodes=[];
-    let xi=0,yi=0;
     function addN(n, px, py, type){ state.nodes.push({id:n.id,name:n.name,type,pfmea:n.pfmea||[],connections:[],x:px,y:py}); }
     (state.processes||[]).forEach((p,pi)=>{
       addN(p, PAD+pi*180, PAD, 'process');
       (p.components||[]).forEach((c,ci)=>{
         addN(c, PAD+pi*180+ci*20, PAD+120, 'comp');
-        // Connect process→comp
         const pn=state.nodes.find(x=>x.id===p.id);
         if(pn) pn.connections.push(c.id);
         (c.subs||[]).forEach((s,si)=>{
@@ -1982,7 +1846,6 @@ function setSyncStatus(s){
 function updScope(field, val){
   if(!state.project.scope) state.project.scope={};
   state.project.scope[field]=val;
-  // Keep project name in sync
   if(field==='projName'){
     state.project.name=val||'New Project';
     document.getElementById('project-name-display').textContent=state.project.name;
@@ -2003,17 +1866,13 @@ function populateScopeHeader(){
     const el=document.getElementById(id);
     if(el && document.activeElement!==el) el.value=s[key]||'';
   });
-  // Sync project name field with main state
   const pn=document.getElementById('sh-projname');
   if(pn && document.activeElement!==pn) pn.value=state.project.name||'';
 }
 
-// ═══════════════════════════════════
-//  INLINE PROJECT RENAME
-// ═══════════════════════════════════
 function startRenameProject(){
   const span=document.getElementById('project-name-display');
-  if(document.getElementById('project-name-input-inline')) return; // already editing
+  if(document.getElementById('project-name-input-inline')) return;
   const currentName=state.project.name||'New Project';
   const input=document.createElement('input');
   input.id='project-name-input-inline';
@@ -2026,7 +1885,6 @@ function startRenameProject(){
   function finish(){
     const name=input.value.trim()||'New Project';
     state.project.name=name;
-    // Restore the span
     const newSpan=document.createElement('span');
     newSpan.className='project-name';
     newSpan.id='project-name-display';
@@ -2034,7 +1892,6 @@ function startRenameProject(){
     newSpan.textContent=name;
     newSpan.onclick=startRenameProject;
     input.replaceWith(newSpan);
-    // Update all other displays
     document.getElementById('project-root-label').textContent=name;
     saveState();
     if(currentView==='chart') renderChart();
@@ -2057,7 +1914,6 @@ document.getElementById('add-name').addEventListener('keydown',e=>{if(e.key==='E
 let tipsOpen=false;
 function toggleTips(){ tipsOpen=!tipsOpen; document.getElementById('tips-panel').classList.toggle('open',tipsOpen); }
 
-// Resizer
 const resizer=document.getElementById('resizer'), panelLeft=document.getElementById('panel-left');
 let resizing=false;
 resizer.addEventListener('mousedown',()=>{ resizing=true; resizer.classList.add('dragging'); document.body.style.cursor='col-resize'; document.body.style.userSelect='none'; });
@@ -2071,7 +1927,7 @@ function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
 // ═══════════════════════════════════
 //  INIT
 // ═══════════════════════════════════
-loadState(); // async — renders tree when Supabase responds
+loadState(); 
 </script>
 </body>
 </html>
