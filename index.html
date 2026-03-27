@@ -120,6 +120,16 @@
   .fc-node.connect-source { border-color:var(--accent) !important; box-shadow:0 0 0 4px rgba(79,126,248,.5) !important; }
   .fc-node.connect-hover  { border-color:var(--green)  !important; box-shadow:0 0 0 4px rgba(52,199,123,.4) !important; }
   
+  /* Clickable Connections */
+  .conn-path { 
+    pointer-events: auto; 
+    transition: stroke 0.15s, stroke-width 0.15s; 
+  }
+  .conn-path:hover { 
+    stroke: var(--red) !important; 
+    stroke-width: 3.5px !important; 
+  }
+
   /* Flowchart node boxes */
   .fc-node { position:absolute; border:1.5px solid var(--border2); border-radius:8px; background:var(--bg2); cursor:pointer; transition:border-color .15s, box-shadow .15s; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:8px 12px; user-select:none; }
   .fc-node:hover { border-color:var(--accent); box-shadow:0 0 0 3px rgba(79,126,248,.2); }
@@ -158,6 +168,7 @@
 
   table.pfmea { width:100%; border-collapse:collapse; font-size:12px; min-width:1200px; }
   table.pfmea th { background:var(--bg3); color:var(--text2); font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.3px; padding:7px 8px; border-bottom:1px solid var(--border); white-space:nowrap; border-right:1px solid var(--border); vertical-align:middle; }
+  /* Height added to fix scrolling gap */
   table.pfmea thead tr:first-child th { position:sticky; top:0; z-index:3; font-size:11px; letter-spacing:.4px; height:36px; }
   table.pfmea thead tr:first-child th[colspan] { border-bottom:none; }
   table.pfmea thead tr:last-child th { position:sticky; top:36px; z-index:2; }
@@ -615,12 +626,12 @@
 //  STATE
 // ═══════════════════════════════════
 let state = { project:{ name:'New Project', part:'', rev:'', author:'', pfmea:[], scope:{} }, nodes:[] };
-let selectedNodeId = null; // null = project level
+let selectedNodeId = null; 
 let currentView = 'list';
 let addCtx = { type:null, parentId:null };
 let _connectMode = false;
 let _connectSource = null;
-let _expandedNodes = new Set(); // Stateful memory for open list dropdowns
+let _expandedNodes = new Set(); // Stores expanded list view dropdowns
 
 function genId(){ return '_'+Math.random().toString(36).slice(2,9); }
 
@@ -689,7 +700,7 @@ function setView(v){
 }
 
 // ═══════════════════════════════════
-//  LIST VIEW (Refactored for Memory & Filtering)
+//  LIST VIEW (Refactored Filtering & Dropdown)
 // ═══════════════════════════════════
 function renderTree(){
   const lbl=state.project.name||'Project';
@@ -698,14 +709,13 @@ function renderTree(){
   row.className='node-row'+(selectedNodeId===null?' active':'');
   const body=document.getElementById('tree-body');
   
-  // Only show top level items in list view
+  // Filter list view to ONLY show process or generic nodes
   const processNodes = state.nodes.filter(n => n.type === 'process' || n.type === 'node');
 
   if(!processNodes.length){
     body.innerHTML='<div style="text-align:center;color:var(--text3);font-size:12px;padding:20px 10px">No processes yet.<br>Click <strong>+ Add</strong> to create one.</div>';
     return;
   }
-  
   body.innerHTML=processNodes.map(n=>renderFlatNode(n)).join('');
 }
 
@@ -721,12 +731,23 @@ function renderFlatNode(n){
   const ap = nodeMaxAP(n);
   const apDot = ap ? `<span style="width:8px;height:8px;border-radius:50%;background:${ap==='H'?'var(--red)':ap==='M'?'var(--amber)':'var(--green)'};display:inline-block;margin-left:4px;flex-shrink:0"></span>` : '';
 
-  const connected = (n.connections||[]).map(cid => state.nodes.find(x => x.id === cid)).filter(Boolean);
+  // 1. Find Inputs: Components pointing TO this process
+  const inputs = state.nodes
+    .filter(x => x.type === 'comp' && (x.connections || []).includes(n.id))
+    .map(x => ({ ...x, connType: 'INPUT', color: 'var(--amber)' }));
+  
+  // 2. Find Outputs: Components this process points TO
+  const outputs = (n.connections || [])
+    .map(cid => state.nodes.find(x => x.id === cid))
+    .filter(x => x && x.type === 'comp')
+    .map(x => ({ ...x, connType: 'OUTPUT', color: 'var(--green)' }));
+
+  const connectedComps = [...inputs, ...outputs];
   
   let subsHtml = '';
   let arrowHtml = `<span style="display:inline-block;width:14px;margin-right:2px;"></span>`;
 
-  if (connected.length > 0) {
+  if (connectedComps.length > 0) {
     const isOpen = _expandedNodes.has(n.id);
     const rot = isOpen ? '90deg' : '0deg';
     const disp = isOpen ? 'block' : 'none';
@@ -734,11 +755,15 @@ function renderFlatNode(n){
     arrowHtml = `<span onclick="toggleConn(event, '${n.id}')" style="display:inline-block;width:14px;margin-right:2px;font-size:9px;color:var(--text3);transition:transform 0.15s;cursor:pointer;text-align:center;transform:rotate(${rot});">▶</span>`;
     
     subsHtml = `<div class="node-children" style="display:${disp}; margin-top:0; padding-top:4px; padding-bottom:4px;">`;
-    connected.forEach(cn => {
+    
+    connectedComps.forEach(cn => {
       const childAct = selectedNodeId === cn.id ? ' active' : '';
       subsHtml += `<div class="node-row${childAct}" onclick="selectNode('${cn.id}')" style="padding:5px 12px; margin-bottom: 2px;">
         <div class="node-dot" style="background:var(--comp);width:6px;height:6px;"></div>
-        <div class="node-label" style="font-size:11px;color:var(--text2)">${esc(cn.name)}</div>
+        <div class="node-label" style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:6px;">
+          ${esc(cn.name)}
+          <span style="font-size:8px;padding:2px 5px;border-radius:4px;background:rgba(255,255,255,0.05);color:${cn.color};font-weight:700;letter-spacing:0.5px;">${cn.connType}</span>
+        </div>
       </div>`;
     });
     subsHtml += `</div>`;
@@ -902,10 +927,17 @@ function renderChart(){
       path.setAttribute('stroke','rgba(255,255,255,0.25)');
       path.setAttribute('stroke-width','1.5');
       path.setAttribute('marker-end','url(#arrh)');
-      path.setAttribute('class','conn-path');
+      path.setAttribute('class','conn-path'); // Enables click logic on SVG
       path.dataset.src=src.id; path.dataset.tgt=tid;
       path.style.cursor='pointer';
-      path.addEventListener('click',e=>{ e.stopPropagation(); if(confirm('Remove this connection?')){ src.connections=src.connections.filter(x=>x!==tid); renderChart(); saveState(); }});
+      path.addEventListener('click',e=>{ 
+        e.stopPropagation(); 
+        if(confirm('Remove this connection?')){ 
+          src.connections=src.connections.filter(x=>x!==tid); 
+          renderChart(); 
+          saveState(); 
+        }
+      });
       svg.appendChild(path);
     });
   });
@@ -946,14 +978,24 @@ function renderChart(){
     const nm=document.createElement('div'); nm.className='fc-node-name'; nm.textContent=n.name;
     div.appendChild(nm);
 
+    // Node Click logic updated to toggle connections continuously
     div.addEventListener('click',e=>{
       e.stopPropagation();
       if(_connectMode){
-        if(!_connectSource){ _connectSource=n.id; div.classList.add('connect-source'); }
+        if(!_connectSource){ 
+          _connectSource=n.id; 
+          div.classList.add('connect-source'); 
+        }
         else if(_connectSource!==n.id){
           const src=state.nodes.find(x=>x.id===_connectSource);
-          if(src){ if(!src.connections) src.connections=[]; if(!src.connections.includes(n.id)) src.connections.push(n.id); }
-          exitConnectMode(); renderChart(); saveState();
+          if(src){ 
+            if(!src.connections) src.connections=[]; 
+            if(!src.connections.includes(n.id)) src.connections.push(n.id); 
+          }
+          // Reset source to keep drawing mode active
+          _connectSource = null; 
+          renderChart(); 
+          saveState();
         }
         return;
       }
@@ -986,7 +1028,8 @@ function renderChart(){
 function enterConnectMode(){
   _connectMode=true; _connectSource=null;
   document.getElementById('chart-viewport').classList.add('connect-mode');
-  document.getElementById('connect-btn').textContent='✕ Cancel';
+  // Changed text to 'Done' since it functions as a toggle
+  document.getElementById('connect-btn').textContent='✕ Done'; 
   document.getElementById('connect-btn').style.background='var(--amber)';
   document.getElementById('connect-btn').style.color='#fff';
   document.getElementById('connect-btn').style.border='none';
@@ -1055,7 +1098,14 @@ function renderConnections(){
       path.setAttribute('stroke','rgba(255,255,255,0.25)'); path.setAttribute('stroke-width','1.5');
       path.setAttribute('marker-end','url(#arrh)'); path.setAttribute('class','conn-path');
       path.dataset.src=src.id; path.dataset.tgt=tid; path.style.cursor='pointer';
-      path.addEventListener('click',e=>{ e.stopPropagation(); if(confirm('Remove this connection?')){ src.connections=src.connections.filter(x=>x!==tid); renderChart(); saveState(); }});
+      path.addEventListener('click',e=>{ 
+        e.stopPropagation(); 
+        if(confirm('Remove this connection?')){ 
+          src.connections=src.connections.filter(x=>x!==tid); 
+          renderChart(); 
+          saveState(); 
+        }
+      });
       svg.appendChild(path);
     });
   });
@@ -1546,7 +1596,6 @@ function exportCurrentXLSX(){
         right:{style:'thin',color:{rgb:'AAAAAA'}}
       }
     };
-    // 90 DEGREE FIX APPLIED HERE:
     if(vertical==='rotate') style.alignment = {textRotation:90, horizontal:'center', vertical:'center', wrapText:false};
     return style;
   }
