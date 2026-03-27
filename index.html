@@ -1,3 +1,11 @@
+<!--
+v3.4.0: "Eliminated" invisible ceiling in Chart view, retained "Fit" button functionaliy
+
+v3.3.0: Updated mouse control in Chart View. Middle-mouse to pan, shift click for group selection
+
+v3.2.0: Ammended arrow style for visual cohesiveness. Block-block snapping instead of block-grid snapping
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -82,19 +90,21 @@
   .node-btn { width:22px; height:22px; border-radius:5px; border:none; background:var(--bg3); color:var(--text2); font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .1s; }
   .node-btn:hover { background:var(--border2); color:var(--text); }
   .node-children { margin-left:20px; margin-top:4px; padding-left:12px; border-left:1px dashed var(--border2); }
-  .empty-tree { text-align:center; color:var(--text3); font-size:12px; padding:30px 10px; }
 
   /* Chart view */
   #chart-view { flex:1; display:none; flex-direction:column; overflow:hidden; }
   .chart-toolbar { padding:8px 12px; border-bottom:1px solid var(--border); background:var(--bg2); display:flex; gap:6px; align-items:center; flex-shrink:0; }
   .chart-hint { font-size:11px; color:var(--text3); margin-left:auto; }
-  #chart-viewport { flex:1; overflow:hidden; position:relative; cursor:grab; background:var(--bg); background-image:radial-gradient(circle, rgba(255,255,255,0.045) 1px, transparent 1px); background-size:28px 28px; }
+  #chart-viewport { flex:1; overflow:hidden; position:relative; cursor:default; background:var(--bg); background-image:radial-gradient(circle, rgba(255,255,255,0.045) 1px, transparent 1px); background-size:28px 28px; }
   #chart-viewport.panning { cursor:grabbing; }
   #chart-world { position:absolute; top:0; left:0; transform-origin:0 0; will-change:transform; }
   #chart-canvas { position:relative; }
   #chart-svg { position:absolute; top:0; left:0; pointer-events:none; overflow:visible; }
   #chart-nodes { position:absolute; top:0; left:0; }
   #zoom-badge { position:absolute; bottom:12px; left:12px; background:var(--bg2); border:1px solid var(--border2); border-radius:6px; padding:4px 10px; font-size:11px; color:var(--text2); pointer-events:none; z-index:10; }
+
+  /* Marquee Selection Box */
+  .selection-box { position:absolute; border:1px solid var(--accent); background:rgba(79,126,248,0.15); pointer-events:none; z-index:100; display:none; }
 
   /* Chart mode: floating PFMEA drawer from right */
   #chart-pfmea-drawer {
@@ -121,27 +131,21 @@
   .fc-node.connect-hover  { border-color:var(--green)  !important; box-shadow:0 0 0 4px rgba(52,199,123,.4) !important; }
   
   /* Clickable Connections */
-  .conn-path { 
-    pointer-events: auto; 
-    transition: stroke 0.15s, stroke-width 0.15s; 
-  }
-  .conn-path:hover { 
-    stroke: var(--red) !important; 
-    stroke-width: 3.5px !important; 
-  }
+  .conn-path { pointer-events: auto; transition: stroke 0.15s, stroke-width 0.15s; }
+  .conn-path:hover { stroke: var(--red) !important; stroke-width: 3.5px !important; }
 
   /* Flowchart node boxes */
   .fc-node { position:absolute; border:1.5px solid var(--border2); border-radius:8px; background:var(--bg2); cursor:pointer; transition:border-color .15s, box-shadow .15s; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:8px 12px; user-select:none; }
   .fc-node:hover { border-color:var(--accent); box-shadow:0 0 0 3px rgba(79,126,248,.2); }
-  .fc-node.fc-active { box-shadow:0 0 0 3px rgba(79,126,248,.35); }
+  .fc-node.fc-active { box-shadow:0 0 0 3px rgba(79,126,248,.4); border-color:var(--accent); background:rgba(79,126,248,.05); }
   .fc-node.fc-project { border-color:var(--amber); }
-  .fc-node.fc-project.fc-active { background:rgba(245,158,11,.08); box-shadow:0 0 0 3px rgba(245,158,11,.3); }
+  .fc-node.fc-project.fc-active { background:rgba(245,158,11,.08); box-shadow:0 0 0 3px rgba(245,158,11,.4); border-color:var(--amber); }
   .fc-node.fc-process { border-color:var(--process); }
   .fc-node.fc-process.fc-active { background:rgba(79,126,248,.08); }
   .fc-node.fc-comp { border-color:var(--comp); }
-  .fc-node.fc-comp.fc-active { background:rgba(124,92,246,.08); box-shadow:0 0 0 3px rgba(124,92,246,.3); }
+  .fc-node.fc-comp.fc-active { background:rgba(124,92,246,.08); box-shadow:0 0 0 3px rgba(124,92,246,.4); border-color:var(--comp); }
   .fc-node.fc-sub { border-color:var(--sub); }
-  .fc-node.fc-sub.fc-active { background:rgba(52,199,123,.08); box-shadow:0 0 0 3px rgba(52,199,123,.3); }
+  .fc-node.fc-sub.fc-active { background:rgba(52,199,123,.08); box-shadow:0 0 0 3px rgba(52,199,123,.4); border-color:var(--sub); }
   .fc-node-name { font-size:12px; font-weight:600; color:var(--text); line-height:1.3; word-break:break-word; }
   .fc-node-type { font-size:10px; margin-top:3px; }
   .fc-rpn-dot { position:absolute; top:-5px; right:-5px; width:10px; height:10px; border-radius:50%; border:2px solid var(--bg2); }
@@ -187,12 +191,10 @@
   .rpn-med { background:rgba(245,158,11,.2); color:var(--amber); }
   .rpn-low { background:rgba(52,199,123,.2); color:var(--green); }
   
-  /* Level indicator cell */
   .level-cell { padding:6px 4px; vertical-align:top; text-align:left; white-space:nowrap; width:60px; min-width:60px; }
   .level-dot-wrap { display:flex; align-items:flex-start; justify-content:center; padding-top:6px; }
   .level-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
   
-  /* Group separator row */
   tr.group-sep td { padding:0; height:3px; border:none; }
   tr.group-header td { padding:4px 8px; font-size:10px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; border-bottom:1px solid var(--border); vertical-align:middle; }
   .add-row-btn { margin:10px 0; padding:8px 14px; background:transparent; border:1px dashed var(--border2); color:var(--text2); border-radius:8px; cursor:pointer; font-size:12px; display:flex; align-items:center; gap:6px; transition:all .15s; }
@@ -336,7 +338,7 @@
 
     <div id="chart-view">
       <div class="chart-toolbar">
-        <span class="chart-hint">Scroll to zoom · Drag to pan · Right-click a node for options</span>
+        <span class="chart-hint">Mid-click to pan · Left-click drag to select multiple · Shift-click to toggle</span>
         <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
           <div class="add-dropdown-wrap" id="add-dropdown-wrap-chart">
             <button class="btn btn-ghost btn-sm" onclick="toggleAddDropdownChart(event)">+ Add ▾</button>
@@ -371,7 +373,7 @@
               <div class="drawer-subtitle" id="drawer-subtitle">PFMEA Table</div>
             </div>
             <span id="drawer-rpn-summary" style="font-size:11px;color:var(--text2);margin-left:auto;margin-right:8px"></span>
-            <button class="btn btn-ghost btn-sm" onclick="addPfmeaRow()" style="margin-right:4px">+ Row</button>
+            <button class="btn btn-ghost btn-sm" onclick="addPfmeaRow()" style="margin-right:4px" id="drawer-add-row-btn">+ Row</button>
             <button class="drawer-close" onclick="closeDrawer()" title="Close">✕</button>
           </div>
           <div class="drawer-body">
@@ -420,7 +422,7 @@
                 <tbody id="pfmea-tbody"></tbody>
               </table>
             </div>
-            <button class="add-row-btn" onclick="addPfmeaRow()"><span style="font-size:16px">+</span> Add Failure Mode Row</button>
+            <button class="add-row-btn" id="drawer-add-row-btn-bottom" onclick="addPfmeaRow()"><span style="font-size:16px">+</span> Add Failure Mode Row</button>
           </div>
           <div class="drawer-footer">
             <span style="font-size:11px;color:var(--text3);font-weight:600">AP = Action Priority</span>
@@ -432,6 +434,7 @@
         </div>
         <div id="chart-world">
           <div id="chart-canvas">
+            <div id="selection-box" class="selection-box"></div>
             <svg id="chart-svg"></svg>
             <div id="chart-nodes"></div>
           </div>
@@ -450,14 +453,14 @@
       </div>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
         <span id="rpn-summary" style="font-size:12px;color:var(--text2)"></span>
-        <button class="btn btn-ghost btn-sm" onclick="addPfmeaRow()">+ Add Row</button>
+        <button class="btn btn-ghost btn-sm" id="main-add-row-btn" onclick="addPfmeaRow()">+ Add Row</button>
       </div>
     </div>
     <div class="pfmea-empty" id="pfmea-empty">
       <div class="pfmea-empty-icon">📋</div>
       <div class="pfmea-empty-text">
         Select any node from the left panel<br>to view or edit its PFMEA table.<br>
-        <span style="font-size:12px;color:var(--text3)">In Chart view, right-click a node for more options.</span>
+        <span style="font-size:12px;color:var(--text3)">In Chart view, left-drag to select multiple nodes.</span>
       </div>
     </div>
     <div class="scope-wrap" id="scope-wrap">
@@ -538,7 +541,7 @@
         </thead>
         <tbody id="pfmea-tbody-main"></tbody>
       </table>
-      <button class="add-row-btn" onclick="addPfmeaRow()"><span style="font-size:16px">+</span> Add Failure Mode Row</button>
+      <button class="add-row-btn" id="main-add-row-btn-bottom" onclick="addPfmeaRow()"><span style="font-size:16px">+</span> Add Failure Mode Row</button>
     </div>
     <div class="legend" id="pfmea-legend" style="display:none">
       <span style="font-size:11px;color:var(--text3);font-weight:600">AP = Action Priority (S×O×D)</span>
@@ -625,12 +628,12 @@
 //  STATE
 // ═══════════════════════════════════
 let state = { project:{ name:'New Project', part:'', rev:'', author:'', pfmea:[], scope:{} }, nodes:[] };
-let selectedNodeId = null; 
+let selectedNodes = []; 
 let currentView = 'list';
 let addCtx = { type:null, parentId:null };
 let _connectMode = false;
 let _connectSource = null;
-let _expandedNodes = new Set(); // Stores expanded list view dropdowns
+let _expandedNodes = new Set(); 
 
 function genId(){ return '_'+Math.random().toString(36).slice(2,9); }
 
@@ -680,16 +683,7 @@ function setView(v){
   document.getElementById('add-dropdown-wrap').style.display=v==='list'?'':'none';
   if(v==='list'){
     closeDrawer();
-    if(selectedNodeId===null){
-      const n=state.project;
-      showPfmea(n,'Project',n.name||'Project');
-    } else {
-      const res=findNode(selectedNodeId);
-      if(res){
-        const tl=res.type==='process'?'Process':res.type==='comp'?'Component':'Sub-component';
-        showPfmea(res.node,tl,res.node.name);
-      }
-    }
+    updatePfmeaView();
   }
   if(v==='chart'){
     renderChart();
@@ -699,16 +693,15 @@ function setView(v){
 }
 
 // ═══════════════════════════════════
-//  LIST VIEW (Filtered Filtering & Dropdown)
+//  LIST VIEW 
 // ═══════════════════════════════════
 function renderTree(){
   const lbl=state.project.name||'Project';
   document.getElementById('project-root-label').textContent=lbl;
   const row=document.getElementById('project-root-row');
-  row.className='node-row'+(selectedNodeId===null?' active':'');
+  row.className='node-row'+(selectedNodes.length===0?' active':'');
   const body=document.getElementById('tree-body');
   
-  // Filter list view to ONLY show process or generic nodes
   const processNodes = state.nodes.filter(n => n.type === 'process' || n.type === 'node');
 
   if(!processNodes.length){
@@ -726,16 +719,14 @@ function toggleConn(e, id) {
 }
 
 function renderFlatNode(n){
-  const act = selectedNodeId === n.id ? ' active' : '';
+  const act = selectedNodes.includes(n.id) ? ' active' : '';
   const ap = nodeMaxAP(n);
   const apDot = ap ? `<span style="width:8px;height:8px;border-radius:50%;background:${ap==='H'?'var(--red)':ap==='M'?'var(--amber)':'var(--green)'};display:inline-block;margin-left:4px;flex-shrink:0"></span>` : '';
 
-  // 1. Find Inputs: Components pointing TO this process
   const inputs = state.nodes
     .filter(x => x.type === 'comp' && (x.connections || []).includes(n.id))
     .map(x => ({ ...x, connType: 'INPUT', color: 'var(--amber)' }));
   
-  // 2. Find Outputs: Components this process points TO
   const outputs = (n.connections || [])
     .map(cid => state.nodes.find(x => x.id === cid))
     .filter(x => x && x.type === 'comp')
@@ -756,7 +747,7 @@ function renderFlatNode(n){
     subsHtml = `<div class="node-children" style="display:${disp}; margin-top:0; padding-top:4px; padding-bottom:4px;">`;
     
     connectedComps.forEach(cn => {
-      const childAct = selectedNodeId === cn.id ? ' active' : '';
+      const childAct = selectedNodes.includes(cn.id) ? ' active' : '';
       subsHtml += `<div class="node-row${childAct}" onclick="selectNode('${cn.id}')" style="padding:5px 12px; margin-bottom: 2px;">
         <div class="node-dot" style="background:var(--comp);width:6px;height:6px;"></div>
         <div class="node-label" style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:6px;">
@@ -783,10 +774,11 @@ function renderFlatNode(n){
 }
 
 // ═══════════════════════════════════
-//  CHART PAN / ZOOM
+//  CHART PAN / ZOOM / SELECT
 // ═══════════════════════════════════
 let _zoom=1, _panX=40, _panY=40, _chartW=0, _chartH=0;
 let _isPanning=false, _startX=0, _startY=0, _startPanX=0, _startPanY=0;
+let _isSelecting=false, _selStartX=0, _selStartY=0;
 const MIN_ZOOM=0.15, MAX_ZOOM=3;
 
 function applyTransform(){
@@ -816,64 +808,126 @@ function initChartInteraction(){
 
   vp.addEventListener('mousedown',e=>{
     if(e.target.closest('.fc-node')) return;
-    _isPanning=true; _startX=e.clientX; _startY=e.clientY;
-    _startPanX=_panX; _startPanY=_panY;
-    vp.classList.add('panning');
-    e.preventDefault();
+    
+    // Middle Click to Pan
+    if(e.button === 1) { 
+      e.preventDefault();
+      _isPanning=true; _startX=e.clientX; _startY=e.clientY;
+      _startPanX=_panX; _startPanY=_panY;
+      vp.classList.add('panning');
+    } 
+    // Left Click to Marquee Select
+    else if (e.button === 0 && !_connectMode) {
+      _isSelecting = true;
+      const world = document.getElementById('chart-world');
+      const wr = world.getBoundingClientRect();
+      _selStartX = (e.clientX - wr.left) / _zoom;
+      _selStartY = (e.clientY - wr.top) / _zoom;
+      
+      const selBox = document.getElementById('selection-box');
+      selBox.style.left = _selStartX + 'px';
+      selBox.style.top = _selStartY + 'px';
+      selBox.style.width = '0px';
+      selBox.style.height = '0px';
+      selBox.style.display = 'block';
+
+      if(!e.shiftKey) {
+          selectedNodes = [];
+          updateSelectionVisuals();
+          updatePfmeaView();
+      }
+    }
   });
   
-  // Magnetic Block-to-Block Snapping Integration
   window.addEventListener('mousemove',e=>{
-    if(_draggingNode){
-      const world=document.getElementById('chart-world');
-      if(!world) return;
-      const wr=world.getBoundingClientRect();
-      
-      let rawX = Math.max(0,(e.clientX-wr.left)/_zoom-_dragOffX);
-      let rawY = Math.max(0,(e.clientY-wr.top)/_zoom-_dragOffY);
-      
-      // Block-to-Block Snapping
-      let snapX = rawX;
-      let snapY = rawY;
-      const THRESHOLD = 15; // Magnetic distance threshold in pixels
-      let minDx = THRESHOLD;
-      let minDy = THRESHOLD;
+    const world=document.getElementById('chart-world');
+    if(!world) return;
+    const wr=world.getBoundingClientRect();
+    
+    // Group Dragging & Snapping (REMOVED Math.max limits for infinite canvas)
+    if(_draggingNodes && _draggingNodes.length > 0){
+      _draggingNodes.forEach(dn => {
+        let rawX = (e.clientX-wr.left)/_zoom - dn.offX;
+        let rawY = (e.clientY-wr.top)/_zoom - dn.offY;
+        
+        let snapX = rawX, snapY = rawY;
+        const THRESHOLD = 15; 
+        let minDx = THRESHOLD, minDy = THRESHOLD;
 
-      state.nodes.forEach(n => {
-        if (n.id === _draggingNode.id) return; // Don't snap to itself
-        // Check X alignment
-        if (Math.abs(rawX - n.x) < minDx) {
-          minDx = Math.abs(rawX - n.x);
-          snapX = n.x;
-        }
-        // Check Y alignment
-        if (Math.abs(rawY - n.y) < minDy) {
-          minDy = Math.abs(rawY - n.y);
-          snapY = n.y;
-        }
+        state.nodes.forEach(n => {
+          if (selectedNodes.includes(n.id)) return; 
+          if (Math.abs(rawX - n.x) < minDx) { minDx = Math.abs(rawX - n.x); snapX = n.x; }
+          if (Math.abs(rawY - n.y) < minDy) { minDy = Math.abs(rawY - n.y); snapY = n.y; }
+        });
+        
+        dn.node.x = snapX;
+        dn.node.y = snapY;
+        
+        const div=document.querySelector(`.fc-node[data-id="${dn.node.id}"]`);
+        if(div){ div.style.left=snapX+'px'; div.style.top=snapY+'px'; }
       });
-      
-      _draggingNode.x = snapX;
-      _draggingNode.y = snapY;
-      
-      const div=document.querySelector(`.fc-node[data-id="${_draggingNode.id}"]`);
-      if(div){ div.style.left=_draggingNode.x+'px'; div.style.top=_draggingNode.y+'px'; }
       renderConnections();
+      _dragMoved = true;
       return;
     }
 
-    // Panning logic
-    if(!_isPanning) return;
-    _panX=_startPanX+(e.clientX-_startX);
-    _panY=_startPanY+(e.clientY-_startY);
-    applyTransform();
+    // Marquee Selection Box
+    if(_isSelecting) {
+      const curX = (e.clientX - wr.left) / _zoom;
+      const curY = (e.clientY - wr.top) / _zoom;
+      const x = Math.min(_selStartX, curX);
+      const y = Math.min(_selStartY, curY);
+      const w = Math.abs(curX - _selStartX);
+      const h = Math.abs(curY - _selStartY);
+      
+      const selBox = document.getElementById('selection-box');
+      selBox.style.left = x + 'px';
+      selBox.style.top = y + 'px';
+      selBox.style.width = w + 'px';
+      selBox.style.height = h + 'px';
+      
+      // Highlight intersecting nodes
+      const nodes = document.querySelectorAll('.fc-node');
+      nodes.forEach(el => {
+          const nx = parseFloat(el.style.left);
+          const ny = parseFloat(el.style.top);
+          const nw = 140; const nh = 54; 
+          const overlap = !(nx > x + w || nx + nw < x || ny > y + h || ny + nh < y);
+          
+          if(overlap) el.classList.add('fc-active');
+          else if(!selectedNodes.includes(el.dataset.id)) el.classList.remove('fc-active');
+      });
+      return;
+    }
+
+    // Panning
+    if(_isPanning) {
+      _panX=_startPanX+(e.clientX-_startX);
+      _panY=_startPanY+(e.clientY-_startY);
+      applyTransform();
+    }
   });
 
-  window.addEventListener('mouseup',()=>{
+  window.addEventListener('mouseup', e => {
     if(_isPanning){ _isPanning=false; document.getElementById('chart-viewport')?.classList.remove('panning'); }
-    if(_draggingNode){ saveState(); _draggingNode=null; }
+    if(_draggingNodes){ saveState(); _draggingNodes=null; }
+    
+    // Finalize Marquee Selection
+    if(_isSelecting) {
+      _isSelecting = false;
+      document.getElementById('selection-box').style.display = 'none';
+      
+      const activeNodes = document.querySelectorAll('.fc-node.fc-active');
+      let newSelection = [];
+      activeNodes.forEach(el => newSelection.push(el.dataset.id));
+      selectedNodes = newSelection;
+      
+      updateSelectionVisuals();
+      updatePfmeaView();
+    }
   });
 
+  // Touch support for panning
   let _t0=null;
   vp.addEventListener('touchstart',e=>{ if(e.touches.length===1){ _t0=e.touches[0]; _startPanX=_panX; _startPanY=_panY; }},{passive:true});
   vp.addEventListener('touchmove',e=>{
@@ -884,28 +938,33 @@ function initChartInteraction(){
     }
   },{passive:true});
   vp.addEventListener('touchend',()=>{ _t0=null; });
+}
 
-  let _initDist=0,_initZoom=1;
-  vp.addEventListener('touchstart',e=>{
-    if(e.touches.length===2){
-      _initDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
-      _initZoom=_zoom;
-    }
-  },{passive:true});
-  vp.addEventListener('touchmove',e=>{
-    if(e.touches.length===2){
-      const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
-      _zoom=Math.min(MAX_ZOOM,Math.max(MIN_ZOOM,_initZoom*(d/_initDist)));
-      applyTransform();
-    }
-  },{passive:true});
+function updateSelectionVisuals() {
+  document.querySelectorAll('.fc-node').forEach(el=>el.classList.remove('fc-active'));
+  selectedNodes.forEach(id => {
+      const el = document.querySelector(`.fc-node[data-id="${id}"]`);
+      if(el) el.classList.add('fc-active');
+  });
+  renderTree();
+}
+
+function updatePfmeaView() {
+   if(selectedNodes.length === 0) {
+       showPfmeaUI(state.project, 'Project', state.project.name);
+   } else if (selectedNodes.length === 1) {
+       const res = findNode(selectedNodes[0]);
+       if(res) showPfmeaUI(res.node, res.type, res.node.name);
+   } else {
+       showPfmeaUI(null, 'Multiple', `${selectedNodes.length} Nodes Selected`);
+   }
 }
 
 // ═══════════════════════════════════
 //  CHART VIEW
 // ═══════════════════════════════════
 const BW=140, BH=54, PAD=60;
-let _draggingNode=null, _dragOffX=0, _dragOffY=0;
+let _draggingNodes=null, _dragMoved=false;
 
 function renderChart(){
   const nodesDiv=document.getElementById('chart-nodes');
@@ -924,7 +983,6 @@ function renderChart(){
   svg.setAttribute('width',maxX); svg.setAttribute('height',maxY);
   _chartW=maxX; _chartH=maxY;
 
-  // Solid Triangle Arrowhead Upgrade
   svg.innerHTML=`<defs>
     <marker id="arrh" viewBox="0 0 10 10" refX="0" refY="5" markerWidth="5" markerHeight="5" orient="auto">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(255,255,255,0.35)" />
@@ -941,7 +999,7 @@ function renderChart(){
       const dx = tgtCx - srcCx, dy = tgtCy - srcCy;
       let x1, y1, x2, y2, cx1, cy1, cx2, cy2;
       const offsetMax = 50;
-      const gap = 8; // Pulls line back from arrowhead tip
+      const gap = 8; 
 
       if (Math.abs(dx) > Math.abs(dy)) { 
         y1 = srcCy; y2 = tgtCy;
@@ -976,7 +1034,7 @@ function renderChart(){
       path.setAttribute('stroke-width','1.5');
       path.setAttribute('marker-end','url(#arrh)');
       path.setAttribute('class','conn-path'); 
-      path.id = `conn-${src.id}-${tid}`; // Unique ID for performant updating
+      path.id = `conn-${src.id}-${tid}`; 
       path.dataset.src=src.id; path.dataset.tgt=tid;
       path.style.cursor='pointer';
       path.addEventListener('click',e=>{ 
@@ -992,7 +1050,7 @@ function renderChart(){
   });
 
   state.nodes.forEach(n=>{
-    const isActive=selectedNodeId===n.id;
+    const isActive = selectedNodes.includes(n.id);
     const isConnSrc=_connectMode && _connectSource===n.id;
     const div=document.createElement('div');
     div.className='fc-node'+(isActive?' fc-active':'')+(isConnSrc?' connect-source':'');
@@ -1027,43 +1085,56 @@ function renderChart(){
     const nm=document.createElement('div'); nm.className='fc-node-name'; nm.textContent=n.name;
     div.appendChild(nm);
 
-    // Node Click logic updated to toggle connections continuously
-    div.addEventListener('click',e=>{
+    div.addEventListener('mouseenter',()=>{ if(_connectMode&&_connectSource&&_connectSource!==n.id) div.classList.add('connect-hover'); });
+    div.addEventListener('mouseleave',()=>div.classList.remove('connect-hover'));
+
+    // Multi-Select & Drag Handling
+    div.addEventListener('mousedown',e=>{
+      if(e.button!==0) return;
       e.stopPropagation();
+      
       if(_connectMode){
-        if(!_connectSource){ 
-          _connectSource=n.id; 
-          div.classList.add('connect-source'); 
-        }
+        if(!_connectSource){ _connectSource=n.id; div.classList.add('connect-source'); }
         else if(_connectSource!==n.id){
           const src=state.nodes.find(x=>x.id===_connectSource);
           if(src){ 
             if(!src.connections) src.connections=[]; 
             if(!src.connections.includes(n.id)) src.connections.push(n.id); 
           }
-          // Reset source to keep drawing mode active
           _connectSource = null; 
-          renderChart(); 
-          saveState();
+          renderChart(); saveState();
         }
         return;
       }
-      selectNode(n.id);
-      document.querySelectorAll('.fc-node').forEach(el=>el.classList.remove('fc-active'));
-      div.classList.add('fc-active');
-    });
-
-    div.addEventListener('mouseenter',()=>{ if(_connectMode&&_connectSource&&_connectSource!==n.id) div.classList.add('connect-hover'); });
-    div.addEventListener('mouseleave',()=>div.classList.remove('connect-hover'));
-
-    div.addEventListener('mousedown',e=>{
-      if(e.button!==0||_connectMode) return;
-      _draggingNode=n;
+      
+      if(e.shiftKey) {
+         if(selectedNodes.includes(n.id)) selectedNodes = selectedNodes.filter(id => id !== n.id);
+         else selectedNodes.push(n.id);
+      } else {
+         if(!selectedNodes.includes(n.id)) selectedNodes = [n.id];
+      }
+      
+      updateSelectionVisuals();
+      updatePfmeaView();
+      
       const world=document.getElementById('chart-world');
       const wr=world.getBoundingClientRect();
-      _dragOffX=(e.clientX-wr.left)/_zoom - n.x;
-      _dragOffY=(e.clientY-wr.top)/_zoom - n.y;
-      e.preventDefault();
+      
+      _draggingNodes = selectedNodes.map(id => {
+          const node = state.nodes.find(x => x.id === id);
+          if(!node) return null;
+          return { node, offX: (e.clientX-wr.left)/_zoom - node.x, offY: (e.clientY-wr.top)/_zoom - node.y };
+      }).filter(Boolean);
+      
+      _dragMoved = false; 
+    });
+    
+    div.addEventListener('mouseup', e => {
+       if(!_dragMoved && !e.shiftKey && selectedNodes.length > 1 && !_connectMode) {
+           selectedNodes = [n.id];
+           updateSelectionVisuals();
+           updatePfmeaView();
+       }
     });
 
     div.addEventListener('contextmenu',e=>{ e.preventDefault(); showCtx(e.clientX,e.clientY,n); });
@@ -1077,7 +1148,6 @@ function renderChart(){
 function enterConnectMode(){
   _connectMode=true; _connectSource=null;
   document.getElementById('chart-viewport').classList.add('connect-mode');
-  // Changed text to 'Done' since it functions as a toggle
   document.getElementById('connect-btn').textContent='✕ Done'; 
   document.getElementById('connect-btn').style.background='var(--amber)';
   document.getElementById('connect-btn').style.color='#fff';
@@ -1092,8 +1162,6 @@ function exitConnectMode(){
 }
 function toggleConnectMode(){ _connectMode?exitConnectMode():enterConnectMode(); }
 
-
-// High Performance SVG path updates (No rebuilding lines during drag)
 function renderConnections(){
   const byId={};
   state.nodes.forEach(n=>byId[n.id]=n);
@@ -1101,8 +1169,6 @@ function renderConnections(){
   state.nodes.forEach(src=>{
     (src.connections||[]).forEach(tid=>{
       const tgt=byId[tid]; if(!tgt) return;
-      
-      // Find the existing line instead of creating a new one
       const path = document.getElementById(`conn-${src.id}-${tid}`);
       if(!path) return;
 
@@ -1110,8 +1176,7 @@ function renderConnections(){
       const tgtCx = tgt.x + BW / 2, tgtCy = tgt.y + BH / 2;
       const dx = tgtCx - srcCx, dy = tgtCy - srcCy;
       let x1, y1, x2, y2, cx1, cy1, cx2, cy2;
-      const offsetMax = 50;
-      const gap = 8; 
+      const offsetMax = 50; const gap = 8; 
 
       if (Math.abs(dx) > Math.abs(dy)) { 
         y1 = srcCy; y2 = tgtCy;
@@ -1138,8 +1203,6 @@ function renderConnections(){
             cy1 = y1 - offset; cy2 = y2 + offset;
         }
       }
-      
-      // Update the coordinates of the existing line
       const d = `M${x1},${y1} C${cx1},${cy1} ${cx2},${cy2} ${x2},${y2}`;
       path.setAttribute('d', d);
     });
@@ -1153,11 +1216,25 @@ function showCtx(x,y,n){
   const m=document.createElement('div'); m.className='fc-ctx';
   m.style.left=x+'px'; m.style.top=y+'px';
   const items=[];
-  items.push({label:'Open PFMEA', fn:()=>selectNode(n.id)});
-  items.push({label:'⇢ Connect from here', fn:()=>{ _connectSource=n.id; enterConnectMode(); }});
-  items.push({sep:true});
-  items.push({label:'Rename', fn:()=>renameNode(n.id)});
-  items.push({label:'Delete', danger:true, fn:()=>deleteNode(n.id)});
+  
+  if(selectedNodes.length > 1) {
+    items.push({label:'Open Group PFMEA', fn:()=>updatePfmeaView()});
+    items.push({sep:true});
+    items.push({label:'Delete Group', danger:true, fn:()=>{
+       if(!confirm(`Delete ${selectedNodes.length} nodes and all their PFMEA data?`)) return;
+       selectedNodes.forEach(id => {
+           state.nodes=state.nodes.filter(x=>x.id!==id);
+           state.nodes.forEach(x=>{ x.connections=(x.connections||[]).filter(c=>c!==id); });
+       });
+       selectProject();
+    }});
+  } else {
+    items.push({label:'Open PFMEA', fn:()=>selectNode(n.id)});
+    items.push({label:'⇢ Connect from here', fn:()=>{ _connectSource=n.id; enterConnectMode(); }});
+    items.push({sep:true});
+    items.push({label:'Rename', fn:()=>renameNode(n.id)});
+    items.push({label:'Delete', danger:true, fn:()=>deleteNode(n.id)});
+  }
 
   items.forEach(it=>{
     if(it.sep){ const s=document.createElement('div'); s.className='fc-ctx-sep'; m.appendChild(s); return; }
@@ -1182,12 +1259,30 @@ function closeCtx(){ if(_ctx){_ctx.remove();_ctx=null;} }
 
 function fitChart(){
   const vp=document.getElementById('chart-viewport');
-  if(!vp||!_chartW||!_chartH) { _panX=40;_panY=40;_zoom=1;applyTransform();return; }
+  if(!vp) return;
+  if(!state.nodes || !state.nodes.length) { _panX=40;_panY=40;_zoom=1;applyTransform();return; }
+  
+  // Dynamic Bounding Box Calculation
+  let minX = Math.min(...state.nodes.map(n=>n.x));
+  let minY = Math.min(...state.nodes.map(n=>n.y));
+  let maxX = Math.max(...state.nodes.map(n=>n.x + BW));
+  let maxY = Math.max(...state.nodes.map(n=>n.y + BH));
+  
+  // Add visual padding around the edges
+  minX -= PAD; minY -= PAD;
+  maxX += PAD; maxY += PAD;
+  
+  const contentW = maxX - minX;
+  const contentH = maxY - minY;
+  
   const vpW=vp.clientWidth, vpH=vp.clientHeight;
-  const scaleX=vpW/_chartW, scaleY=vpH/_chartH;
+  const scaleX=vpW/contentW, scaleY=vpH/contentH;
+  
   _zoom=Math.min(scaleX,scaleY,1)*0.92;
-  _panX=(vpW-_chartW*_zoom)/2;
-  _panY=(vpH-_chartH*_zoom)/2;
+  
+  // Calculate center offset including dynamic minimum coordinates
+  _panX=(vpW-contentW*_zoom)/2 - (minX * _zoom);
+  _panY=(vpH-contentH*_zoom)/2 - (minY * _zoom);
   applyTransform();
 }
 
@@ -1207,22 +1302,19 @@ function zoomBy(factor){
 //  SELECTION
 // ═══════════════════════════════════
 function selectProject(){
-  selectedNodeId=null;
-  renderTree();
-  showPfmea(state.project,'Project',state.project.name||'Project');
+  selectedNodes=[];
+  updateSelectionVisuals();
+  updatePfmeaView();
   saveState();
 }
 function selectNode(id){
-  selectedNodeId=id;
-  renderTree();
-  if(currentView==='chart') renderChart();
-  const res=findNode(id); if(!res) return;
-  const {node,type}=res;
-  const tl=type==='process'?'Process':type==='comp'?'Component':'Sub-component';
-  showPfmea(node,tl,node.name);
+  selectedNodes=[id];
+  updateSelectionVisuals();
+  updatePfmeaView();
   saveState();
 }
-function showPfmea(node,typeLabel,name){
+
+function showPfmeaUI(node,typeLabel,name){
   if(currentView==='chart'){
     document.getElementById('pfmea-title').textContent=name;
     document.getElementById('pfmea-subtitle').textContent=`${typeLabel} · PFMEA (cumulative)`;
@@ -1231,7 +1323,13 @@ function showPfmea(node,typeLabel,name){
     document.getElementById('scope-wrap').style.display='block';
     document.getElementById('pfmea-empty').style.display='none';
     document.getElementById('table-wrap').style.display='block';
-    renderPfmeaTable(node);
+    
+    document.getElementById('main-add-row-btn').style.display = selectedNodes.length > 1 ? 'none' : 'block';
+    document.getElementById('drawer-add-row-btn').style.display = selectedNodes.length > 1 ? 'none' : 'block';
+    document.getElementById('main-add-row-btn-bottom').style.display = selectedNodes.length > 1 ? 'none' : 'block';
+    document.getElementById('drawer-add-row-btn-bottom').style.display = selectedNodes.length > 1 ? 'none' : 'block';
+
+    renderPfmeaTable();
     populateScopeHeader();
   } else {
     document.getElementById('pfmea-empty').style.display='none';
@@ -1241,8 +1339,12 @@ function showPfmea(node,typeLabel,name){
     document.getElementById('scope-wrap').style.display='block';
     document.getElementById('pfmea-title').textContent=name;
     document.getElementById('pfmea-subtitle').textContent=`${typeLabel} · PFMEA (cumulative)`;
+    
+    document.getElementById('main-add-row-btn').style.display = selectedNodes.length > 1 ? 'none' : 'block';
+    document.getElementById('main-add-row-btn-bottom').style.display = selectedNodes.length > 1 ? 'none' : 'block';
+    
     populateScopeHeader();
-    renderPfmeaTable(node);
+    renderPfmeaTable();
   }
 }
 function closeDrawer(){
@@ -1260,7 +1362,7 @@ const LEVEL_META = {
   sub:     { color:'var(--sub)',      label:'SUB', depth:3 },
 };
 
-function collectRows(nodeId){
+function collectRows(){
   const entries=[];
   const seen=new Set();
 
@@ -1269,7 +1371,7 @@ function collectRows(nodeId){
     seen.add(node.id);
     if(!node.pfmea) node.pfmea=[];
     node.pfmea.forEach(row=>{
-      entries.push({row, nodeRef:node, nodeId:node.id, nodeName:node.name||'', nodeType:'node'});
+      entries.push({row, nodeRef:node, nodeId:node.id, nodeName:node.name||'', nodeType:node.type||'node'});
     });
     (node.connections||[]).forEach(cid=>{
       const cn=state.nodes.find(n=>n.id===cid);
@@ -1277,22 +1379,23 @@ function collectRows(nodeId){
     });
   }
 
-  if(nodeId===null){
+  if(selectedNodes.length===0){
     if(!state.project.pfmea) state.project.pfmea=[];
     state.project.pfmea.forEach(row=>{
       entries.push({row, nodeRef:state.project, nodeId:'__project__', nodeName:state.project.name||'Project', nodeType:'project'});
     });
     state.nodes.forEach(n=>addNode(n));
   } else {
-    const res=findNode(nodeId);
-    if(res) addNode(res.node);
+    selectedNodes.forEach(id => {
+       const res = findNode(id);
+       if(res) addNode(res.node);
+    });
   }
   return entries;
 }
 
-function renderPfmeaTable(node){
-  if(!node.pfmea) node.pfmea=[];
-  const entries=collectRows(selectedNodeId);
+function renderPfmeaTable(){
+  const entries=collectRows();
 
   let html='';
   let lastNodeId=null;
@@ -1367,7 +1470,7 @@ function mkRow(row,i,nodeType,sourceNodeId){
 }
 
 function rfRow(rid){
-  const entries=collectRows(selectedNodeId);
+  const entries=collectRows();
   const entry=entries.find(e=>e.row.id===rid); if(!entry) return;
   const row=entry.row;
   const ap=getAP(row), ap2=getAP(row,true);
@@ -1395,10 +1498,6 @@ function updSummaryFromEntries(entries){
   if(el2) el2.textContent=txt;
 }
 
-function updSummary(node){
-  updSummaryFromEntries(collectRows(selectedNodeId));
-}
-
 function findRowAndNode(rid) {
   let row = (state.project.pfmea || []).find(r => r.id === rid);
   if (row) return { row, node: state.project };
@@ -1416,26 +1515,23 @@ function updCell(rid,field,val){
   saveState();
 }
 
-function getSelNode(){
-  if(selectedNodeId===null) return state.project;
-  const res=findNode(selectedNodeId); return res?res.node:null;
-}
-
 function addPfmeaRow(){
-  const node=getSelNode(); if(!node) return;
+  if(selectedNodes.length !== 1 && selectedNodes.length !== 0) return;
+  const node = selectedNodes.length === 0 ? state.project : findNode(selectedNodes[0]).node;
+  if(!node) return;
+  
   node.pfmea.push({id:genId(),processItem:'',processStep:'',workElement:'',fnItem:'',fnStep:'',fnWork:'',failEffect:'',sev:'',failMode:'',failCause:'',prevCtrl:'',occ:'',detCtrl:'',det:'',spProdChar:'',prevAction:'',detAction:'',resp:'',date:'',status:'',taken:'',completionDate:'',sev2:'',occ2:'',det2:''});
-  renderPfmeaTable(node); saveState();
+  renderPfmeaTable(); saveState();
   ['table-wrap','drawer-body-scroll'].forEach(id=>{const el=document.getElementById(id);if(el)el.scrollTop=999999;});
 }
 
 function delRow(rid){
   if(!confirm('Delete this row?')) return;
-  const entries=collectRows(selectedNodeId);
+  const entries=collectRows();
   const entry=entries.find(e=>e.row.id===rid);
   if(!entry) return;
   entry.nodeRef.pfmea=entry.nodeRef.pfmea.filter(r=>r.id!==rid);
-  const node=getSelNode();
-  renderPfmeaTable(node||state.project); saveState();
+  renderPfmeaTable(); saveState();
 }
 
 // ═══════════════════════════════════
@@ -1535,7 +1631,7 @@ function renameNode(id){
     res.node.name=name.trim();
     renderTree();
     if(currentView==='chart') renderChart();
-    if(selectedNodeId===id) document.getElementById('pfmea-title').textContent=name.trim();
+    if(selectedNodes.includes(id)) document.getElementById('pfmea-title').textContent=name.trim();
     saveState();
   }
 }
@@ -1544,13 +1640,10 @@ function deleteNode(id){
   if(!confirm('Delete this node and all its PFMEA data?')) return;
   state.nodes=state.nodes.filter(n=>n.id!==id);
   state.nodes.forEach(n=>{ n.connections=(n.connections||[]).filter(c=>c!==id); });
-  if(selectedNodeId===id){
-    selectedNodeId=null;
-    document.getElementById('pfmea-empty').style.display='flex';
-    document.getElementById('table-wrap').style.display='none';
-    document.getElementById('pfmea-header').style.display='none';
-    document.getElementById('pfmea-legend').style.display='none';
-    const sw=document.getElementById('scope-wrap');if(sw)sw.style.display='none';
+  if(selectedNodes.includes(id)){
+    selectedNodes = selectedNodes.filter(x => x !== id);
+    if(selectedNodes.length === 0) selectProject();
+    else updatePfmeaView();
   }
   renderTree();
   if(currentView==='chart') renderChart();
@@ -1580,7 +1673,7 @@ function saveProject(){
 }
 function clearAll(){
   state={project:{name:'New Project',part:'',rev:'',author:'',pfmea:[],scope:{}},nodes:[]};
-  selectedNodeId=null;
+  selectedNodes=[];
   document.getElementById('project-name-display').textContent=state.project.name;
   document.getElementById('pfmea-empty').style.display='flex';
   document.getElementById('table-wrap').style.display='none';
@@ -1728,7 +1821,8 @@ function exportCurrentXLSX(){
         top:{style:'thin',color:{rgb:'AAAAAA'}},
         bottom:{style:'thin',color:{rgb:'AAAAAA'}},
         left:{style:'thin',color:{rgb:'AAAAAA'}},
-        right:{style:'AAAAAA'}}
+        right:{style:'thin',color:{rgb:'AAAAAA'}}
+      }
     };
     if(h.vert){
       style.alignment = {textRotation:90, horizontal:'center', vertical:'center', wrapText:false};
@@ -1798,7 +1892,7 @@ function loadFile(e){
     try{
       state=JSON.parse(ev.target.result);
       migrateState();
-      selectedNodeId=null;
+      selectedNodes=[];
       document.getElementById('project-name-display').textContent=state.project.name||'Imported Project';
       document.getElementById('pfmea-empty').style.display='flex';
       document.getElementById('table-wrap').style.display='none';
