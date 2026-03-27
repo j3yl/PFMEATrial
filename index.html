@@ -60,7 +60,7 @@ v3.2.0: Ammended arrow style for visual cohesiveness. Block-block snapping inste
   .main { display:flex; flex:1; overflow:hidden; height:calc(100vh - 56px); }
 
   /* Left panel */
-  .panel-left { width:440px; min-width:280px; max-width:600px; background:var(--bg2); border-right:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; transition:width .2s; }
+  .panel-left { width:440px; min-width:280px; max-width:1200px; background:var(--bg2); border-right:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden;}
 
   .panel-header { padding:12px 14px 10px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; flex-shrink:0; }
   .panel-title { font-size:13px; font-weight:600; color:var(--text); flex:1; }
@@ -95,7 +95,7 @@ v3.2.0: Ammended arrow style for visual cohesiveness. Block-block snapping inste
   #chart-view { flex:1; display:none; flex-direction:column; overflow:hidden; }
   .chart-toolbar { padding:8px 12px; border-bottom:1px solid var(--border); background:var(--bg2); display:flex; gap:6px; align-items:center; flex-shrink:0; }
   .chart-hint { font-size:11px; color:var(--text3); margin-left:auto; }
-  #chart-viewport { flex:1; overflow:hidden; position:relative; cursor:default; background:var(--bg); background-image:radial-gradient(circle, rgba(255,255,255,0.045) 1px, transparent 1px); background-size:28px 28px; }
+  #chart-viewport { flex:1; overflow:hidden; position:relative; cursor:default; background:var(--bg); background-image:radial-gradient(circle, rgba(255,255,255,0.045) 1px, transparent 1px); background-size:28px 28px; width:100%;}
   #chart-viewport.panning { cursor:grabbing; }
   #chart-world { position:absolute; top:0; left:0; transform-origin:0 0; will-change:transform; }
   #chart-canvas { position:relative; }
@@ -1257,32 +1257,27 @@ function showCtx(x,y,n){
 }
 function closeCtx(){ if(_ctx){_ctx.remove();_ctx=null;} }
 
-function fitChart(){
-  const vp=document.getElementById('chart-viewport');
-  if(!vp) return;
-  if(!state.nodes || !state.nodes.length) { _panX=40;_panY=40;_zoom=1;applyTransform();return; }
+function fitChart() {
+  const vp = document.getElementById('chart-viewport');
+  if (!vp || !state.nodes.length) { _panX = 40; _panY = 40; _zoom = 1; applyTransform(); return; }
   
-  // Dynamic Bounding Box Calculation
-  let minX = Math.min(...state.nodes.map(n=>n.x));
-  let minY = Math.min(...state.nodes.map(n=>n.y));
-  let maxX = Math.max(...state.nodes.map(n=>n.x + BW));
-  let maxY = Math.max(...state.nodes.map(n=>n.y + BH));
+  // Calculate dynamic bounding box of all nodes
+  let minX = Math.min(...state.nodes.map(n => n.x));
+  let minY = Math.min(...state.nodes.map(n => n.y));
+  let maxX = Math.max(...state.nodes.map(n => n.x + BW));
+  let maxY = Math.max(...state.nodes.map(n => n.y + BH));
   
-  // Add visual padding around the edges
-  minX -= PAD; minY -= PAD;
-  maxX += PAD; maxY += PAD;
-  
+  // Add padding
+  minX -= PAD; minY -= PAD; maxX += PAD; maxY += PAD;
   const contentW = maxX - minX;
   const contentH = maxY - minY;
   
-  const vpW=vp.clientWidth, vpH=vp.clientHeight;
-  const scaleX=vpW/contentW, scaleY=vpH/contentH;
+  const vpW = vp.clientWidth, vpH = vp.clientHeight;
+  _zoom = Math.min(vpW / contentW, vpH / contentH, 1) * 0.92;
   
-  _zoom=Math.min(scaleX,scaleY,1)*0.92;
-  
-  // Calculate center offset including dynamic minimum coordinates
-  _panX=(vpW-contentW*_zoom)/2 - (minX * _zoom);
-  _panY=(vpH-contentH*_zoom)/2 - (minY * _zoom);
+  // Center the view on the calculated bounding box
+  _panX = (vpW - contentW * _zoom) / 2 - (minX * _zoom);
+  _panY = (vpH - contentH * _zoom) / 2 - (minY * _zoom);
   applyTransform();
 }
 
@@ -2091,11 +2086,28 @@ document.getElementById('add-name').addEventListener('keydown',e=>{if(e.key==='E
 let tipsOpen=false;
 function toggleTips(){ tipsOpen=!tipsOpen; document.getElementById('tips-panel').classList.toggle('open',tipsOpen); }
 
-const resizer=document.getElementById('resizer'), panelLeft=document.getElementById('panel-left');
-let resizing=false;
-resizer.addEventListener('mousedown',()=>{ resizing=true; resizer.classList.add('dragging'); document.body.style.cursor='col-resize'; document.body.style.userSelect='none'; });
-window.addEventListener('mousemove',e=>{ if(!resizing) return; const w=e.clientX; if(w>200&&w<700) panelLeft.style.width=w+'px'; });
-window.addEventListener('mouseup',()=>{ resizing=false; resizer.classList.remove('dragging'); document.body.style.cursor=''; document.body.style.userSelect=''; });
+const resizer = document.getElementById('resizer'), panelLeft = document.getElementById('panel-left');
+let resizing = false;
+resizer.addEventListener('mousedown', () => { resizing = true; resizer.classList.add('dragging'); document.body.style.userSelect='none'; });
+
+window.addEventListener('mousemove', e => { 
+  if (!resizing) return; 
+  let w = e.clientX; 
+  // Clamping prevents jamming by staying responsive even at edge
+  if (w < 280) w = 280;
+  if (w > 1200) w = 1200;
+  panelLeft.style.width = w + 'px'; 
+});
+
+window.addEventListener('mouseup', () => { 
+  if (resizing) {
+    resizing = false; 
+    resizer.classList.remove('dragging'); 
+    document.body.style.userSelect = ''; 
+    // Re-center chart when resize ends to match new viewport
+    if (currentView === 'chart') fitChart();
+  }
+});
 
 document.addEventListener('contextmenu',e=>{ if(!e.target.closest('.fc-node')) closeCtx(); });
 
