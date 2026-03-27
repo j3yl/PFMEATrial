@@ -906,9 +906,11 @@ function renderChart(){
         cy1 = y1; cy2 = y2;
         if (dx > 0) { 
             x1 = src.x + BW; x2 = tgt.x - gap;
+            let offset = Math.min(50, Math.abs(x2 - x1) / 2);
             cx1 = x1 + offset; cx2 = x2 - offset;
         } else { 
             x1 = src.x; x2 = tgt.x + BW + gap;
+            let offset = Math.min(50, Math.abs(x2 - x1) / 2);
             cx1 = x1 - offset; cx2 = x2 + offset;
         }
       } else { 
@@ -916,12 +918,15 @@ function renderChart(){
         cx1 = x1; cx2 = x2;
         if (dy > 0) { 
             y1 = src.y + BH; y2 = tgt.y - gap;
+            let offset = Math.min(50, Math.abs(y2 - y1) / 2);
             cy1 = y1 + offset; cy2 = y2 - offset;
         } else { 
             y1 = src.y; y2 = tgt.y + BH + gap;
+            let offset = Math.min(50, Math.abs(y2 - y1) / 2);
             cy1 = y1 - offset; cy2 = y2 + offset;
         }
       }
+
       const d = `M${x1},${y1} C${cx1},${cy1} ${cx2},${cy2} ${x2},${y2}`;
       const path=document.createElementNS('http://www.w3.org/2000/svg','path');
       path.setAttribute('d',d);
@@ -1056,7 +1061,7 @@ window.addEventListener('mousemove',e=>{
     let rawY = Math.max(0,(e.clientY-wr.top)/_zoom-_dragOffY);
     
     // Snap to the 28px background grid
-    const GRID = 28;
+    const GRID = 20;
     _draggingNode.x = Math.round(rawX / GRID) * GRID;
     _draggingNode.y = Math.round(rawY / GRID) * GRID;
     
@@ -1079,26 +1084,30 @@ function renderConnections(){
       const tgtCx = tgt.x + BW / 2, tgtCy = tgt.y + BH / 2;
       const dx = tgtCx - srcCx, dy = tgtCy - srcCy;
       let x1, y1, x2, y2, cx1, cy1, cx2, cy2;
-      const offset = 50;
+      const offset = 8;
 
       if (Math.abs(dx) > Math.abs(dy)) { 
         y1 = srcCy; y2 = tgtCy;
         cy1 = y1; cy2 = y2;
         if (dx > 0) { 
-            x1 = src.x + BW; x2 = tgt.x;
+            x1 = src.x + BW; x2 = tgt.x - gap;
+            let offset = Math.min(50, Math.abs(x2 - x1) / 2);
             cx1 = x1 + offset; cx2 = x2 - offset;
         } else { 
-            x1 = src.x; x2 = tgt.x + BW;
+            x1 = src.x; x2 = tgt.x + BW + gap;
+            let offset = Math.min(50, Math.abs(x2 - x1) / 2);
             cx1 = x1 - offset; cx2 = x2 + offset;
         }
       } else { 
         x1 = srcCx; x2 = tgtCx;
         cx1 = x1; cx2 = x2;
         if (dy > 0) { 
-            y1 = src.y + BH; y2 = tgt.y;
+            y1 = src.y + BH; y2 = tgt.y - gap;
+            let offset = Math.min(50, Math.abs(y2 - y1) / 2);
             cy1 = y1 + offset; cy2 = y2 - offset;
         } else { 
-            y1 = src.y; y2 = tgt.y + BH;
+            y1 = src.y; y2 = tgt.y + BH + gap;
+            let offset = Math.min(50, Math.abs(y2 - y1) / 2);
             cy1 = y1 - offset; cy2 = y2 + offset;
         }
       }
