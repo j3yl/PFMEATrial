@@ -751,6 +751,8 @@ function setView(v){
 // ═══════════════════════════════════
 //  LIST VIEW
 // ═══════════════════════════════════
+let _expandedNodes = new Set();
+
 function renderTree(){
   const lbl=state.project.name||'Project';
   document.getElementById('project-root-label').textContent=lbl;
@@ -771,24 +773,29 @@ function renderTree(){
 }
 
 function renderFlatNode(n){
-  const act=selectedNodeId===n.id?' active':'';
-  const ap=nodeMaxAP(n);
-  const apDot=ap?`<span style="width:8px;height:8px;border-radius:50%;background:${ap==='H'?'var(--red)':ap==='M'?'var(--amber)':'var(--green)'};display:inline-block;margin-left:4px;flex-shrink:0"></span>`:'';
+  const act = selectedNodeId === n.id ? ' active' : '';
+  const ap = nodeMaxAP(n);
+  const apDot = ap ? `<span style="width:8px;height:8px;border-radius:50%;background:${ap==='H'?'var(--red)':ap==='M'?'var(--amber)':'var(--green)'};display:inline-block;margin-left:4px;flex-shrink:0"></span>` : '';
 
-  // 1. Find all nodes connected to this process
+  // Find all nodes connected to this process
   const connected = (n.connections||[]).map(cid => state.nodes.find(x => x.id === cid)).filter(Boolean);
   
   let subsHtml = '';
-  let arrowHtml = `<span style="display:inline-block;width:14px;margin-right:2px;"></span>`; // Placeholder for alignment
+  let arrowHtml = `<span style="display:inline-block;width:14px;margin-right:2px;"></span>`;
 
-  // 2. If it has connections, create the dropdown arrow and the hidden list
   if (connected.length > 0) {
-    arrowHtml = `<span id="arr-${n.id}" onclick="toggleConn(event, '${n.id}')" style="display:inline-block;width:14px;margin-right:2px;font-size:9px;color:var(--text3);transition:transform 0.15s;cursor:pointer;text-align:center;">▶</span>`;
+    // Check our memory to see if this node should be open
+    const isOpen = _expandedNodes.has(n.id);
+    const rot = isOpen ? '90deg' : '0deg';
+    const disp = isOpen ? 'block' : 'none';
+
+    arrowHtml = `<span onclick="toggleConn(event, '${n.id}')" style="display:inline-block;width:14px;margin-right:2px;font-size:9px;color:var(--text3);transition:transform 0.15s;cursor:pointer;text-align:center;transform:rotate(${rot});">▶</span>`;
     
-    subsHtml = `<div id="conn-${n.id}" class="node-children" style="display:none; margin-top:0; padding-top:4px; padding-bottom:4px;">`;
+    subsHtml = `<div class="node-children" style="display:${disp}; margin-top:0; padding-top:4px; padding-bottom:4px;">`;
     connected.forEach(cn => {
-      // We also make the child nodes clickable so you can open their PFMEA directly
-      subsHtml += `<div class="node-row" onclick="selectNode('${cn.id}')" style="padding:5px 12px;">
+      // Highlight the child if it is currently selected
+      const childAct = selectedNodeId === cn.id ? ' active' : '';
+      subsHtml += `<div class="node-row${childAct}" onclick="selectNode('${cn.id}')" style="padding:5px 12px; margin-bottom: 2px;">
         <div class="node-dot" style="background:var(--comp);width:6px;height:6px;"></div>
         <div class="node-label" style="font-size:11px;color:var(--text2)">${esc(cn.name)}</div>
       </div>`;
@@ -796,18 +803,30 @@ function renderFlatNode(n){
     subsHtml += `</div>`;
   }
 
-  function toggleConn(e, id) {
-  e.stopPropagation(); // Prevents the main process row from being clicked
-  const container = document.getElementById('conn-' + id);
-  const arrow = document.getElementById('arr-' + id);
+  return `<div class="tree-node fade-in">
+    <div class="node-row${act}" onclick="selectNode('${n.id}')">
+      ${arrowHtml}
+      <div class="node-dot" style="background:var(--accent)"></div>
+      <div class="node-label" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">${esc(n.name)}${apDot}</div>
+      <div class="node-actions">
+        <button class="node-btn" title="Rename" onclick="event.stopPropagation();renameNode('${n.id}')">✎</button>
+        <button class="node-btn" title="Delete" onclick="event.stopPropagation();deleteNode('${n.id}')" style="color:var(--red)">✕</button>
+      </div>
+    </div>
+    ${subsHtml}
+  </div>`;
+}
+
+function toggleConn(e, id) {
+  e.stopPropagation(); // Prevents clicking the main process row
   
-  if (container && container.style.display === 'none') {
-    container.style.display = 'block';
-    if (arrow) arrow.style.transform = 'rotate(90deg)';
-  } else if (container) {
-    container.style.display = 'none';
-    if (arrow) arrow.style.transform = 'rotate(0deg)';
+  if (_expandedNodes.has(id)) {
+    _expandedNodes.delete(id); // Close it
+  } else {
+    _expandedNodes.add(id); // Open it
   }
+  
+  renderTree(); // Redraw the list with the new state
 }
 
   return `<div class="tree-node fade-in">
