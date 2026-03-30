@@ -1,3 +1,9 @@
+<!--
+v3.4.3 fixed dropdown menu stuck, reduced flashing
+
+v3.4.2 Process nodes show most recent component
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,25 +14,14 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
 <style>
   :root {
-    --bg: #0f1117;
-    --bg2: #171a24;
-    --bg3: #1e2130;
-    --border: rgba(255,255,255,0.08);
-    --border2: rgba(255,255,255,0.15);
-    --text: #e8eaf0;
-    --text2: #9aa0b8;
-    --text3: #5a6080;
-    --accent: #4f7ef8;
-    --accentg: linear-gradient(135deg,#4f7ef8,#7c5cf6);
-    --green: #34c77b;
-    --amber: #f59e0b;
-    --red: #ef4444;
-    --process: #4f7ef8;
-    --comp: #7c5cf6;
-    --sub: #34c77b;
+    --bg: #0f1117; --bg2: #171a24; --bg3: #1e2130;
+    --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.15);
+    --text: #e8eaf0; --text2: #9aa0b8; --text3: #5a6080;
+    --accent: #4f7ef8; --accentg: linear-gradient(135deg,#4f7ef8,#7c5cf6);
+    --green: #34c77b; --amber: #f59e0b; --red: #ef4444;
+    --process: #4f7ef8; --comp: #7c5cf6; --sub: #34c77b;
     --font: 'Segoe UI', system-ui, sans-serif;
-    --radius: 10px;
-    --shadow: 0 4px 24px rgba(0,0,0,0.4);
+    --radius: 10px; --shadow: 0 4px 24px rgba(0,0,0,0.4);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; display: flex; flex-direction: column; }
@@ -39,7 +34,7 @@
   .project-name { font-size:14px; font-weight:600; color:var(--text); margin-left:6px; cursor:pointer; border-radius:5px; padding:2px 6px; transition:background .15s; }
   .project-name:hover { background:var(--bg3); }
   .project-name-input { font-size:14px; font-weight:600; color:var(--text); background:var(--bg3); border:1px solid var(--accent); border-radius:5px; padding:2px 8px; margin-left:6px; outline:none; font-family:var(--font); min-width:160px; }
-  .topbar-actions { display:flex; gap:8px; }
+  .topbar-actions { display:flex; gap:8px; margin-left:auto; }
   .btn { padding:7px 16px; border-radius:7px; font-size:13px; font-weight:500; cursor:pointer; border:none; transition:all .15s; }
   .btn-primary { background:var(--accent); color:#fff; }
   .btn-primary:hover { background:#3a6ae0; }
@@ -54,10 +49,8 @@
 
   /* Left panel */
   .panel-left { width:440px; min-width:280px; max-width:1200px; background:var(--bg2); border-right:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; }
-
   .panel-header { padding:12px 14px 10px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; flex-shrink:0; }
   .panel-title { font-size:13px; font-weight:600; color:var(--text); flex:1; }
-
   .view-toggle { display:flex; background:var(--bg3); border-radius:8px; padding:3px; gap:2px; }
   .view-btn { padding:4px 12px; border-radius:6px; font-size:12px; font-weight:500; cursor:pointer; border:none; background:transparent; color:var(--text2); transition:all .15s; }
   .view-btn.active { background:var(--accent); color:#fff; }
@@ -75,9 +68,6 @@
   .node-label { font-size:13px; font-weight:500; flex:1; }
   .node-badge { font-size:10px; padding:2px 7px; border-radius:20px; font-weight:600; }
   .badge-project { background:rgba(245,158,11,.2); color:var(--amber); }
-  .badge-process { background:rgba(79,126,248,.2); color:var(--process); }
-  .badge-comp { background:rgba(124,92,246,.2); color:var(--comp); }
-  .badge-sub { background:rgba(52,199,123,.2); color:var(--sub); }
   .node-actions { display:none; gap:4px; }
   .node-row:hover .node-actions { display:flex; }
   .node-btn { width:22px; height:22px; border-radius:5px; border:none; background:var(--bg3); color:var(--text2); font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .1s; }
@@ -99,7 +89,7 @@
   /* Marquee Selection Box */
   .selection-box { position:absolute; border:1px solid var(--accent); background:rgba(79,126,248,0.15); pointer-events:none; z-index:100; display:none; }
 
-  /* Chart mode: floating PFMEA drawer from right */
+  /* Chart mode: floating PFMEA drawer */
   #chart-pfmea-drawer {
     position:absolute; top:0; right:0; bottom:0; width:520px;
     background:var(--bg2); border-left:1px solid var(--border2);
@@ -619,7 +609,7 @@
 
 <script>
 // ═══════════════════════════════════
-//  STATE
+//  STATE & GLOBAL UTILS
 // ═══════════════════════════════════
 let state = { project:{ name:'New Project', part:'', rev:'', author:'', pfmea:[], scope:{} }, nodes:[] };
 let selectedNodes = []; 
@@ -664,6 +654,37 @@ function findNode(id){
 function getAllNodes(){ return state.nodes; }
 function incomingNodes(id){ return state.nodes.filter(n=>(n.connections||[]).includes(id)); }
 
+/**
+ * RECURSIVE SEARCH: Finds all upstream components by infinitely walking 
+ * backward through the connections chain until it hits a component.
+ */
+function getUpstreamComponents(nodeId, visited = new Set()) {
+  if (visited.has(nodeId)) return [];
+  visited.add(nodeId);
+  
+  let comps = [];
+  const incoming = state.nodes.filter(n => (n.connections || []).includes(nodeId));
+  
+  incoming.forEach(inc => {
+    if (inc.type === 'comp' || inc.type === 'sub') {
+      comps.push(inc);
+    } else {
+      comps = comps.concat(getUpstreamComponents(inc.id, visited));
+    }
+  });
+  
+  // Deduplicate by ID
+  const uniqueComps = [];
+  const seenIds = new Set();
+  for (const c of comps) {
+    if (!seenIds.has(c.id)) {
+      seenIds.add(c.id);
+      uniqueComps.push(c);
+    }
+  }
+  return uniqueComps;
+}
+
 // ═══════════════════════════════════
 //  VIEW TOGGLE
 // ═══════════════════════════════════
@@ -689,6 +710,21 @@ function setView(v){
 // ═══════════════════════════════════
 //  LIST VIEW 
 // ═══════════════════════════════════
+function getUpstreamComponents(nodeId, visited = new Set()) {
+  if (visited.has(nodeId)) return [];
+  visited.add(nodeId);
+  let comps = [];
+  const incoming = state.nodes.filter(n => (n.connections || []).includes(nodeId));
+  incoming.forEach(inc => {
+    if (inc.type === 'comp' || inc.type === 'sub') {
+      comps.push(inc);
+    } else {
+      comps = comps.concat(getUpstreamComponents(inc.id, visited));
+    }
+  });
+  return Array.from(new Set(comps)); 
+}
+
 function renderTree(){
   const lbl=state.project.name||'Project';
   document.getElementById('project-root-label').textContent=lbl;
@@ -702,6 +738,11 @@ function renderTree(){
     body.innerHTML='<div style="text-align:center;color:var(--text3);font-size:12px;padding:20px 10px">No processes yet.<br>Click <strong>+ Add</strong> to create one.</div>';
     return;
   }
+
+  // AUTO-EXPAND LOGIC REMOVED FROM HERE:
+  // Moving expansion logic to the selection event allows you to manually 
+  // collapse menus without the code forcing them back open.
+
   body.innerHTML=processNodes.map(n=>renderFlatNode(n)).join('');
 }
 
@@ -717,54 +758,31 @@ function renderFlatNode(n){
   const ap = nodeMaxAP(n);
   const apDot = ap ? `<span style="width:8px;height:8px;border-radius:50%;background:${ap==='H'?'var(--red)':ap==='M'?'var(--amber)':'var(--green)'};display:inline-block;margin-left:4px;flex-shrink:0"></span>` : '';
 
-  const inputs = state.nodes
-    .filter(x => x.type === 'comp' && (x.connections || []).includes(n.id))
-    .map(x => ({ ...x, connType: 'INPUT', color: 'var(--amber)' }));
+  // Use the recursive search to fetch all upstream components
+  const upComps = getUpstreamComponents(n.id).map(x => ({ ...x, connType: 'INPUT', color: 'var(--amber)' }));
+  const outComps = (n.connections || []).map(cid => state.nodes.find(x => x.id === cid)).filter(x => x && x.type === 'comp').map(x => ({ ...x, connType: 'OUTPUT', color: 'var(--green)' }));
+  const connectedComps = Array.from(new Set([...upComps, ...outComps]));
   
-  const outputs = (n.connections || [])
-    .map(cid => state.nodes.find(x => x.id === cid))
-    .filter(x => x && x.type === 'comp')
-    .map(x => ({ ...x, connType: 'OUTPUT', color: 'var(--green)' }));
-
-  const connectedComps = [...inputs, ...outputs];
-  
-  let subsHtml = '';
   let arrowHtml = `<span style="display:inline-block;width:14px;margin-right:2px;"></span>`;
-
   if (connectedComps.length > 0) {
-    const isOpen = _expandedNodes.has(n.id);
-    const rot = isOpen ? '90deg' : '0deg';
-    const disp = isOpen ? 'block' : 'none';
-
-    arrowHtml = `<span onclick="toggleConn(event, '${n.id}')" style="display:inline-block;width:14px;margin-right:2px;font-size:9px;color:var(--text3);transition:transform 0.15s;cursor:pointer;text-align:center;transform:rotate(${rot});">▶</span>`;
-    
-    subsHtml = `<div class="node-children" style="display:${disp}; margin-top:0; padding-top:4px; padding-bottom:4px;">`;
-    
-    connectedComps.forEach(cn => {
-      const childAct = selectedNodes.includes(cn.id) ? ' active' : '';
-      subsHtml += `<div class="node-row${childAct}" onclick="selectNode('${cn.id}')" style="padding:5px 12px; margin-bottom: 2px;">
-        <div class="node-dot" style="background:var(--comp);width:6px;height:6px;"></div>
-        <div class="node-label" style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:6px;">
-          ${esc(cn.name)}
-          <span style="font-size:8px;padding:2px 5px;border-radius:4px;background:rgba(255,255,255,0.05);color:${cn.color};font-weight:700;letter-spacing:0.5px;">${cn.connType}</span>
-        </div>
-      </div>`;
-    });
-    subsHtml += `</div>`;
+    const rot = _expandedNodes.has(n.id) ? '90deg' : '0deg';
+    arrowHtml = `<span onclick="toggleConn(event, '${n.id}')" style="display:inline-block;width:14px;margin-right:2px;font-size:9px;color:var(--text3);transition:transform 0.15s;cursor:pointer;transform:rotate(${rot});">▶</span>`;
   }
 
-  return `<div class="tree-node fade-in">
+  let subsHtml = `<div class="node-children" style="display:${_expandedNodes.has(n.id)?'block':'none'}">`;
+  connectedComps.forEach(cn => {
+    subsHtml += `<div class="node-row${selectedNodes.includes(cn.id)?' active':''}" onclick="selectNode('${cn.id}')" style="padding:5px 12px; margin-bottom:2px;">
+      <div class="node-dot" style="background:var(--comp);width:6px;height:6px;"></div>
+      <div class="node-label" style="font-size:11px;color:var(--text2);">${esc(cn.name)}</div>
+    </div>`;
+  });
+  subsHtml += `</div>`;
+
+  return `<div class="tree-node">
     <div class="node-row${act}" onclick="selectNode('${n.id}')">
-      ${arrowHtml}
-      <div class="node-dot" style="background:var(--accent)"></div>
-      <div class="node-label" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">${esc(n.name)}${apDot}</div>
-      <div class="node-actions">
-        <button class="node-btn" title="Rename" onclick="event.stopPropagation();renameNode('${n.id}')">✎</button>
-        <button class="node-btn" title="Delete" onclick="event.stopPropagation();deleteNode('${n.id}')" style="color:var(--red)">✕</button>
-      </div>
-    </div>
-    ${subsHtml}
-  </div>`;
+      ${arrowHtml}<div class="node-dot" style="background:var(--accent)"></div>
+      <div class="node-label">${esc(n.name)}${apDot}</div>
+    </div>${subsHtml}</div>`;
 }
 
 // ═══════════════════════════════════
@@ -803,14 +821,12 @@ function initChartInteraction(){
   vp.addEventListener('mousedown',e=>{
     if(e.target.closest('.fc-node')) return;
     
-    // Middle Click to Pan
     if(e.button === 1) { 
       e.preventDefault();
       _isPanning=true; _startX=e.clientX; _startY=e.clientY;
       _startPanX=_panX; _startPanY=_panY;
       vp.classList.add('panning');
     } 
-    // Left Click to Marquee Select
     else if (e.button === 0 && !_connectMode) {
       _isSelecting = true;
       const world = document.getElementById('chart-world');
@@ -865,7 +881,6 @@ function initChartInteraction(){
       return;
     }
 
-    // Marquee Selection Box
     if(_isSelecting) {
       const curX = (e.clientX - wr.left) / _zoom;
       const curY = (e.clientY - wr.top) / _zoom;
@@ -880,7 +895,6 @@ function initChartInteraction(){
       selBox.style.width = w + 'px';
       selBox.style.height = h + 'px';
       
-      // Highlight intersecting nodes
       const nodes = document.querySelectorAll('.fc-node');
       nodes.forEach(el => {
           const nx = parseFloat(el.style.left);
@@ -894,7 +908,6 @@ function initChartInteraction(){
       return;
     }
 
-    // Panning
     if(_isPanning) {
       _panX=_startPanX+(e.clientX-_startX);
       _panY=_startPanY+(e.clientY-_startY);
@@ -906,7 +919,6 @@ function initChartInteraction(){
     if(_isPanning){ _isPanning=false; document.getElementById('chart-viewport')?.classList.remove('panning'); }
     if(_draggingNodes){ saveState(); _draggingNodes=null; }
     
-    // Finalize Marquee Selection
     if(_isSelecting) {
       _isSelecting = false;
       document.getElementById('selection-box').style.display = 'none';
@@ -921,7 +933,6 @@ function initChartInteraction(){
     }
   });
 
-  // Touch support for panning
   let _t0=null;
   vp.addEventListener('touchstart',e=>{ if(e.touches.length===1){ _t0=e.touches[0]; _startPanX=_panX; _startPanY=_panY; }},{passive:true});
   vp.addEventListener('touchmove',e=>{
@@ -957,7 +968,7 @@ function updatePfmeaView() {
 // ═══════════════════════════════════
 //  CHART VIEW
 // ═══════════════════════════════════
-const BW=140, BH=54, PAD=60;
+const BW=140, BH=54, PAD=20;
 let _draggingNodes=null, _dragMoved=false;
 
 function renderChart(){
@@ -1272,7 +1283,7 @@ function fitChart(){
   const vpW=vp.clientWidth, vpH=vp.clientHeight;
   const scaleX=vpW/contentW, scaleY=vpH/contentH;
   
-  _zoom=Math.min(scaleX,scaleY,1)*0.95;
+  _zoom=Math.min(scaleX,scaleY,1)*0.99;
   
   // Calculate center offset including dynamic minimum coordinates
   _panX=(vpW-contentW*_zoom)/2 - (minX * _zoom);
@@ -1301,8 +1312,23 @@ function selectProject(){
   updatePfmeaView();
   saveState();
 }
+
 function selectNode(id){
   selectedNodes=[id];
+  
+  // Expand the process menu once when it (or its child) is selected
+  const n = state.nodes.find(x => x.id === id);
+  if (n && (n.type === 'process' || n.type === 'node')) {
+      _expandedNodes.add(id);
+  } else {
+      // If a component is selected, auto-expand its parent process once
+      state.nodes.filter(x => x.type === 'process').forEach(p => {
+          if ((p.connections || []).includes(id) || getUpstreamComponents(p.id).some(c => c.id === id)) {
+              _expandedNodes.add(p.id);
+          }
+      });
+  }
+
   updateSelectionVisuals();
   updatePfmeaView();
   saveState();
@@ -1356,35 +1382,61 @@ const LEVEL_META = {
   sub:     { color:'var(--sub)',      label:'SUB', depth:3 },
 };
 
-function collectRows(){
-  const entries=[];
-  const seen=new Set();
+function collectRows() {
+  const entries = [];
+  const seenNodes = new Set();
 
-  function addNode(node){
-    if(!node||seen.has(node.id)) return;
-    seen.add(node.id);
-    if(!node.pfmea) node.pfmea=[];
-    node.pfmea.forEach(row=>{
-      entries.push({row, nodeRef:node, nodeId:node.id, nodeName:node.name||'', nodeType:node.type||'node'});
+  /**
+   * Helper to add a node and its entire downstream branch to the table.
+   */
+  function addChain(node) {
+    if (!node || seenNodes.has(node.id)) return;
+    seenNodes.add(node.id);
+
+    // 1. Add this node's own PFMEA rows
+    const rows = node.pfmea || [];
+    rows.forEach(row => {
+      entries.push({
+        row,
+        nodeRef: node,
+        nodeId: node.id === state.project.id ? '__project__' : node.id,
+        nodeName: node.name || '',
+        nodeType: node.type || (node.id === state.project.id ? 'project' : 'node')
+      });
     });
-    (node.connections||[]).forEach(cid=>{
-      const cn=state.nodes.find(n=>n.id===cid);
-      if(cn) addNode(cn);
+
+    // 2. Recursively add everything this node connects to (downstream)
+    (node.connections || []).forEach(cid => {
+      const downstreamNode = state.nodes.find(n => n.id === cid);
+      if (downstreamNode) addChain(downstreamNode);
     });
   }
 
-  if(selectedNodes.length===0){
-    if(!state.project.pfmea) state.project.pfmea=[];
-    state.project.pfmea.forEach(row=>{
-      entries.push({row, nodeRef:state.project, nodeId:'__project__', nodeName:state.project.name||'Project', nodeType:'project'});
-    });
-    state.nodes.forEach(n=>addNode(n));
-  } else {
+  // --- Logic Branching ---
+  
+  // Scenario A: Nothing selected -> Show the entire project data
+  if (selectedNodes.length === 0) {
+    addChain(state.project);
+    state.nodes.forEach(n => addChain(n));
+  } 
+  // Scenario B: Specific nodes selected -> Show selected + recursive ancestors
+  else {
+    // Collect all upstream components for the entire selection first
+    const upstreamComps = new Set();
     selectedNodes.forEach(id => {
-       const res = findNode(id);
-       if(res) addNode(res.node);
+      getUpstreamComponents(id).forEach(c => upstreamComps.add(c));
+    });
+
+    // Add upstream components first so they appear at the top of the table
+    upstreamComps.forEach(comp => addChain(comp));
+
+    // Then add the selected nodes themselves and their downstream branches
+    selectedNodes.forEach(id => {
+      const target = state.nodes.find(n => n.id === id);
+      if (target) addChain(target);
     });
   }
+
   return entries;
 }
 
@@ -2123,16 +2175,13 @@ function exportChartImage() {
   const canvasElement = document.getElementById('chart-canvas');
   const selBox = document.getElementById('selection-box');
   
-  // Hide the selection box temporarily so it doesn't appear in the image
   const originalDisplay = selBox.style.display;
   selBox.style.display = 'none';
 
-  // Deselect nodes for a clean snapshot
   const previouslySelected = [...selectedNodes];
   selectedNodes = [];
   updateSelectionVisuals();
 
-  // Capture the canvas with the dark theme background color
   htmlToImage.toPng(canvasElement, { backgroundColor: '#0f1117' })
     .then(function (dataUrl) {
       const link = document.createElement('a');
