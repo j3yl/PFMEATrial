@@ -1,7 +1,9 @@
 <!--
-v3.4.3 fixed dropdown menu stuck, reduced flashing
+v3.4.6 Updated component dropdown functionality
 
-v3.4.2 Process nodes show most recent component
+v3.4.5 Update dropdown menu functionality
+
+v3.4.4 Added Input and Output tags to Components in List View
 -->
 
 <!DOCTYPE html>
@@ -753,36 +755,69 @@ function toggleConn(e, id) {
   renderTree();
 }
 
-function renderFlatNode(n){
+function renderFlatNode(n) {
   const act = selectedNodes.includes(n.id) ? ' active' : '';
   const ap = nodeMaxAP(n);
   const apDot = ap ? `<span style="width:8px;height:8px;border-radius:50%;background:${ap==='H'?'var(--red)':ap==='M'?'var(--amber)':'var(--green)'};display:inline-block;margin-left:4px;flex-shrink:0"></span>` : '';
 
-  // Use the recursive search to fetch all upstream components
-  const upComps = getUpstreamComponents(n.id).map(x => ({ ...x, connType: 'INPUT', color: 'var(--amber)' }));
-  const outComps = (n.connections || []).map(cid => state.nodes.find(x => x.id === cid)).filter(x => x && x.type === 'comp').map(x => ({ ...x, connType: 'OUTPUT', color: 'var(--green)' }));
-  const connectedComps = Array.from(new Set([...upComps, ...outComps]));
+  // 1. Identify Inputs (Upstream Recursive) and Outputs (Direct Connections)
+  const inputs = getUpstreamComponents(n.id).map(x => ({ 
+    ...x, 
+    role: 'INPUT', 
+    roleColor: 'var(--amber)' 
+  }));
+  
+  const outputs = (n.connections || [])
+    .map(cid => state.nodes.find(x => x.id === cid))
+    .filter(x => x && x.type === 'comp')
+    .map(x => ({ 
+      ...x, 
+      role: 'OUTPUT', 
+      roleColor: 'var(--green)' 
+    }));
+
+  const connectedComps = [...inputs, ...outputs];
+  const hasChildren = connectedComps.length > 0;
+  
+  // NEW: Check if any child component inside this process is currently selected
+  const isChildSelected = connectedComps.some(c => selectedNodes.includes(c.id));
+  
+  // The node is visually open if it was manually expanded OR if a child is selected
+  const isOpen = _expandedNodes.has(n.id) || isChildSelected;
   
   let arrowHtml = `<span style="display:inline-block;width:14px;margin-right:2px;"></span>`;
-  if (connectedComps.length > 0) {
-    const rot = _expandedNodes.has(n.id) ? '90deg' : '0deg';
-    arrowHtml = `<span onclick="toggleConn(event, '${n.id}')" style="display:inline-block;width:14px;margin-right:2px;font-size:9px;color:var(--text3);transition:transform 0.15s;cursor:pointer;transform:rotate(${rot});">▶</span>`;
+  if (hasChildren) {
+    const rot = isOpen ? '90deg' : '0deg';
+    arrowHtml = `<span onclick="toggleConn(event, '${n.id}')" style="display:inline-block;width:14px;margin-right:2px;font-size:9px;cursor:pointer;transform:rotate(${rot});transition:transform 0.15s">▶</span>`;
   }
 
-  let subsHtml = `<div class="node-children" style="display:${_expandedNodes.has(n.id)?'block':'none'}">`;
+  // 2. Build the children HTML strings
+  let subsHtml = `<div class="node-children" id="children-${n.id}" style="display:${isOpen ? 'block' : 'none'}">`;
   connectedComps.forEach(cn => {
-    subsHtml += `<div class="node-row${selectedNodes.includes(cn.id)?' active':''}" onclick="selectNode('${cn.id}')" style="padding:5px 12px; margin-bottom:2px;">
-      <div class="node-dot" style="background:var(--comp);width:6px;height:6px;"></div>
-      <div class="node-label" style="font-size:11px;color:var(--text2);">${esc(cn.name)}</div>
-    </div>`;
+    const cAct = selectedNodes.includes(cn.id) ? ' active' : '';
+    subsHtml += `
+      <div class="node-row${cAct}" onclick="selectNode('${cn.id}')" style="padding-left:24px">
+        <div class="node-dot" style="background:var(--comp);width:6px;height:6px"></div>
+        <div class="node-label" style="font-size:11px; display:flex; align-items:center; gap:6px; overflow:visible;">
+          ${esc(cn.name)}
+          <span style="font-size:7px; padding:1px 4px; border-radius:3px; background:rgba(255,255,255,0.05); color:${cn.roleColor}; font-weight:900; letter-spacing:0.5px; border:1px solid rgba(255,255,255,0.05);">${cn.role}</span>
+        </div>
+      </div>`;
   });
   subsHtml += `</div>`;
 
+  // 3. Return the combined string
   return `<div class="tree-node">
     <div class="node-row${act}" onclick="selectNode('${n.id}')">
-      ${arrowHtml}<div class="node-dot" style="background:var(--accent)"></div>
+      ${arrowHtml}
+      <div class="node-dot" style="background:var(--process)"></div>
       <div class="node-label">${esc(n.name)}${apDot}</div>
-    </div>${subsHtml}</div>`;
+      <div class="node-actions">
+        <button class="node-btn" onclick="event.stopPropagation();deleteNode('${n.id}')">✕</button>
+      </div>
+    </div>
+    ${subsHtml}
+  </div>`;
 }
 
 // ═══════════════════════════════════
@@ -1313,20 +1348,35 @@ function selectProject(){
   saveState();
 }
 
-function selectNode(id){
-  selectedNodes=[id];
-  
-  // Expand the process menu once when it (or its child) is selected
+function selectNode(id) {
+  // Check if the user is clicking the exact node that is already active
+  const isAlreadySelected = selectedNodes.length === 1 && selectedNodes[0] === id;
   const n = state.nodes.find(x => x.id === id);
+  
   if (n && (n.type === 'process' || n.type === 'node')) {
-      _expandedNodes.add(id);
-  } else {
-      // If a component is selected, auto-expand its parent process once
-      state.nodes.filter(x => x.type === 'process').forEach(p => {
-          if ((p.connections || []).includes(id) || getUpstreamComponents(p.id).some(c => c.id === id)) {
-              _expandedNodes.add(p.id);
+      // 1. Process Logic: Always select it, but toggle its dropdown menu
+      selectedNodes = [id];
+      
+      if (isAlreadySelected) {
+          if (_expandedNodes.has(id)) {
+              _expandedNodes.delete(id); // Collapse on second click
+          } else {
+              _expandedNodes.add(id);    // Expand
           }
-      });
+      } else {
+          _expandedNodes.add(id); // Always expand when newly selected
+      }
+      
+  } else {
+      // 2. Component Logic: Toggle selection on and off
+      if (isAlreadySelected) {
+          // Deselect the component if clicked again.
+          // This removes the "force open" state from related processes.
+          selectedNodes = []; 
+      } else {
+          // Select the component
+          selectedNodes = [id]; 
+      }
   }
 
   updateSelectionVisuals();
