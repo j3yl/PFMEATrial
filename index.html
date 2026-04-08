@@ -1,5 +1,5 @@
 <!--
-v3.5.2 Tidied up arrow display due to hardcoded node height variable 
+v3.5.3 Tidied up arrow display due to hardcoded node height variable 
 
 v3.5.1 Added sublabel for duplicate process creation
 
@@ -1039,66 +1039,7 @@ function renderChart(){
     </marker>
   </defs>`;
 
-  const byId={};
-  state.nodes.forEach(n=>byId[n.id]=n);
-  state.nodes.forEach(src=>{
-    (src.connections||[]).forEach(tid=>{
-      const tgt=byId[tid]; if(!tgt) return;
-      const srcCx = src.x + BW / 2, srcCy = src.y + BH / 2;
-      const tgtCx = tgt.x + BW / 2, tgtCy = tgt.y + BH / 2;
-      const dx = tgtCx - srcCx, dy = tgtCy - srcCy;
-      let x1, y1, x2, y2, cx1, cy1, cx2, cy2;
-      const offsetMax = 50;
-      const gap = 8; 
-
-      if (Math.abs(dx) > Math.abs(dy)) { 
-        y1 = srcCy; y2 = tgtCy;
-        cy1 = y1; cy2 = y2;
-        if (dx > 0) { 
-            x1 = src.x + BW; x2 = tgt.x - gap;
-            let offset = Math.min(offsetMax, Math.abs(x2 - x1) / 2);
-            cx1 = x1 + offset; cx2 = x2 - offset;
-        } else { 
-            x1 = src.x; x2 = tgt.x + BW + gap;
-            let offset = Math.min(offsetMax, Math.abs(x2 - x1) / 2);
-            cx1 = x1 - offset; cx2 = x2 + offset;
-        }
-      } else { 
-        x1 = srcCx; x2 = tgtCx;
-        cx1 = x1; cx2 = x2;
-        if (dy > 0) { 
-            y1 = src.y + BH; y2 = tgt.y - gap;
-            let offset = Math.min(offsetMax, Math.abs(y2 - y1) / 2);
-            cy1 = y1 + offset; cy2 = y2 - offset;
-        } else { 
-            y1 = src.y; y2 = tgt.y + BH + gap;
-            let offset = Math.min(offsetMax, Math.abs(y2 - y1) / 2);
-            cy1 = y1 - offset; cy2 = y2 + offset;
-        }
-      }
-      const d = `M${x1},${y1} C${cx1},${cy1} ${cx2},${cy2} ${x2},${y2}`;
-      const path=document.createElementNS('http://www.w3.org/2000/svg','path');
-      path.setAttribute('d',d);
-      path.setAttribute('fill','none');
-      path.setAttribute('stroke','rgba(255,255,255,0.25)');
-      path.setAttribute('stroke-width','1.5');
-      path.setAttribute('marker-end','url(#arrh)');
-      path.setAttribute('class','conn-path'); 
-      path.id = `conn-${src.id}-${tid}`; 
-      path.dataset.src=src.id; path.dataset.tgt=tid;
-      path.style.cursor='pointer';
-      path.addEventListener('click',e=>{ 
-        e.stopPropagation(); 
-        if(confirm('Remove this connection?')){ 
-          src.connections=src.connections.filter(x=>x!==tid); 
-          renderChart(); 
-          saveState(); 
-        }
-      });
-      svg.appendChild(path);
-    });
-  });
-
+  // 1. Render all Node DOM elements FIRST so they have physical height
   state.nodes.forEach(n=>{
     const isActive = selectedNodes.includes(n.id);
     const isConnSrc=_connectMode && _connectSource===n.id;
@@ -1122,26 +1063,26 @@ function renderChart(){
         const colorMap = { process: 'var(--process)', comp: 'var(--comp)', sub: 'var(--sub)' };
         typeLabel.textContent = typeMap[n.type];
         typeLabel.style.cssText = `
-            font-size: 9px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 4px;
-            color: ${colorMap[n.type]};
+            font-size: 9px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.5px; margin-bottom: 4px; color: ${colorMap[n.type]};
         `;
         div.appendChild(typeLabel);
     }
 
     const nm = document.createElement('div'); 
     nm.className = 'fc-node-name'; 
-    // Render the base name, and if a sublabel exists, render it smaller beneath it
     nm.innerHTML = n.sublabel ? `${esc(n.name)} <br><span style="font-size:10px; opacity:0.8;">(${esc(n.sublabel)})</span>` : esc(n.name);
     div.appendChild(nm);
 
     div.addEventListener('mouseenter',()=>{ if(_connectMode&&_connectSource&&_connectSource!==n.id) div.classList.add('connect-hover'); });
     div.addEventListener('mouseleave',()=>div.classList.remove('connect-hover'));
 
-    // Multi-Select & Drag Handling
+    // Handle DblClick for inline editing if it exists
+    div.addEventListener('dblclick', e => {
+      e.stopPropagation();
+      if(typeof startInlineRename === 'function') startInlineRename(n.id, div, nm);
+    });
+
     div.addEventListener('mousedown',e=>{
       if(e.button!==0) return;
       e.stopPropagation();
@@ -1194,6 +1135,11 @@ function renderChart(){
     nodesDiv.appendChild(div);
   });
 
+  // 2. Generate connections AFTER the boxes exist in the DOM
+  requestAnimationFrame(() => {
+    renderConnections();
+  });
+
   initChartInteraction();
   applyTransform();
 }
@@ -1218,14 +1164,37 @@ function toggleConnectMode(){ _connectMode?exitConnectMode():enterConnectMode();
 function renderConnections(){
   const byId={};
   state.nodes.forEach(n=>byId[n.id]=n);
+  const svg = document.getElementById('chart-svg');
   
   state.nodes.forEach(src=>{
     (src.connections||[]).forEach(tid=>{
       const tgt=byId[tid]; if(!tgt) return;
-      const path = document.getElementById(`conn-${src.id}-${tid}`);
-      if(!path) return;
+      
+      let path = document.getElementById(`conn-${src.id}-${tid}`);
+      
+      // Generate the path element if it doesn't exist
+      if(!path) {
+        path = document.createElementNS('http://www.w3.org/2000/svg','path');
+        path.id = `conn-${src.id}-${tid}`;
+        path.setAttribute('fill','none');
+        path.setAttribute('stroke','rgba(255,255,255,0.25)');
+        path.setAttribute('stroke-width','1.5');
+        path.setAttribute('marker-end','url(#arrh)');
+        path.setAttribute('class','conn-path'); 
+        path.dataset.src=src.id; path.dataset.tgt=tid;
+        path.style.cursor='pointer';
+        path.addEventListener('click',e=>{ 
+          e.stopPropagation(); 
+          if(confirm('Remove this connection?')){ 
+            src.connections=src.connections.filter(x=>x!==tid); 
+            renderChart(); 
+            saveState(); 
+          }
+        });
+        svg.appendChild(path);
+      }
 
-      // NEW: Read the actual heights from the DOM since sublabels make nodes taller
+      // Dynamically measure the true rendered height of the DOM elements
       const srcEl = document.querySelector(`.fc-node[data-id="${src.id}"]`);
       const tgtEl = document.querySelector(`.fc-node[data-id="${tgt.id}"]`);
       const actualSrcH = srcEl ? srcEl.offsetHeight : BH;
