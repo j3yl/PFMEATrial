@@ -1,9 +1,9 @@
 <!--
+v3.4.7 Edited "Add" in Chart View for usabiliyt, Added image padding to "Export Image"
+
 v3.4.6 Updated component dropdown functionality
 
 v3.4.5 Update dropdown menu functionality
-
-v3.4.4 Added Input and Output tags to Components in List View
 -->
 
 <!DOCTYPE html>
@@ -327,7 +327,7 @@ v3.4.4 Added Input and Output tags to Components in List View
         <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
           <div class="add-dropdown-wrap" id="add-dropdown-wrap-chart">
             <button class="btn btn-ghost btn-sm" onclick="toggleAddDropdownChart(event)">+ Add ▾</button>
-            <div class="add-dropdown" id="add-dropdown-chart" style="right:0;left:auto;">
+            <div class="add-dropdown" id="add-dropdown-chart" style="left:0; right:auto;">
               <div class="add-dd-item" onclick="closeAddDropdownChart();openAddModal('process',null)">
                 <div class="add-dd-icon" style="background:rgba(79,126,248,.15);">🔷</div>
                 <div><div class="add-dd-label">Process</div><div class="add-dd-sub">Top-level process step</div></div>
@@ -2222,6 +2222,11 @@ function exportChartImage() {
     return;
   }
 
+  if (!state.nodes || state.nodes.length === 0) {
+    alert('No nodes to export!');
+    return;
+  }
+
   const canvasElement = document.getElementById('chart-canvas');
   const selBox = document.getElementById('selection-box');
   
@@ -2232,7 +2237,31 @@ function exportChartImage() {
   selectedNodes = [];
   updateSelectionVisuals();
 
-  htmlToImage.toPng(canvasElement, { backgroundColor: '#0f1117' })
+  // 1. Calculate the exact bounding box of the active blocks
+  const BW = 140, BH = 54; // Width and height of your node boxes
+  const minX = Math.min(...state.nodes.map(n => n.x));
+  const minY = Math.min(...state.nodes.map(n => n.y));
+  const maxX = Math.max(...state.nodes.map(n => n.x + BW));
+  const maxY = Math.max(...state.nodes.map(n => n.y + BH));
+
+  const contentWidth = maxX - minX;
+  const contentHeight = maxY - minY;
+
+  // 2. Set your desired padding
+  const PADDING_VALUE = 35;
+
+  const exportOptions = {
+    backgroundColor: '#0f1117',
+    // Set the final PNG dimensions to tightly wrap the content + padding
+    width: contentWidth + (PADDING_VALUE * 2),
+    height: contentHeight + (PADDING_VALUE * 2),
+    style: {
+      // Shift the canvas back so the top-left node starts exactly at our padding offsets
+      transform: `translate(${-minX + PADDING_VALUE}px, ${-minY + PADDING_VALUE}px)`
+    }
+  };
+
+  htmlToImage.toPng(canvasElement, exportOptions)
     .then(function (dataUrl) {
       const link = document.createElement('a');
       link.download = (state.project.name || 'PFMEA_Flowchart') + '.png';
