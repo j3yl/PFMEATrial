@@ -1,9 +1,9 @@
 <!--
+v3.5.2 Tidied up arrow display due to hardcoded node height variable 
+
 v3.5.1 Added sublabel for duplicate process creation
 
 v3.5.0 Duplicate processes now group components by output components
-
-v3.4.8 Re-loacted input/output tags to the front of component names
 -->
 
 <!DOCTYPE html>
@@ -1225,8 +1225,14 @@ function renderConnections(){
       const path = document.getElementById(`conn-${src.id}-${tid}`);
       if(!path) return;
 
-      const srcCx = src.x + BW / 2, srcCy = src.y + BH / 2;
-      const tgtCx = tgt.x + BW / 2, tgtCy = tgt.y + BH / 2;
+      // NEW: Read the actual heights from the DOM since sublabels make nodes taller
+      const srcEl = document.querySelector(`.fc-node[data-id="${src.id}"]`);
+      const tgtEl = document.querySelector(`.fc-node[data-id="${tgt.id}"]`);
+      const actualSrcH = srcEl ? srcEl.offsetHeight : BH;
+      const actualTgtH = tgtEl ? tgtEl.offsetHeight : BH;
+
+      const srcCx = src.x + BW / 2, srcCy = src.y + actualSrcH / 2;
+      const tgtCx = tgt.x + BW / 2, tgtCy = tgt.y + actualTgtH / 2;
       const dx = tgtCx - srcCx, dy = tgtCy - srcCy;
       let x1, y1, x2, y2, cx1, cy1, cx2, cy2;
       const offsetMax = 50; const gap = 8; 
@@ -1247,11 +1253,11 @@ function renderConnections(){
         x1 = srcCx; x2 = tgtCx;
         cx1 = x1; cx2 = x2;
         if (dy > 0) { 
-            y1 = src.y + BH; y2 = tgt.y - gap;
+            y1 = src.y + actualSrcH; y2 = tgt.y - gap;
             let offset = Math.min(offsetMax, Math.abs(y2 - y1) / 2);
             cy1 = y1 + offset; cy2 = y2 - offset;
         } else { 
-            y1 = src.y; y2 = tgt.y + BH + gap;
+            y1 = src.y; y2 = tgt.y + actualTgtH + gap;
             let offset = Math.min(offsetMax, Math.abs(y2 - y1) / 2);
             cy1 = y1 - offset; cy2 = y2 + offset;
         }
