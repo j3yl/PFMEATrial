@@ -1,9 +1,9 @@
 <!--
+v3.5.5 Added sublabel to list view for easier identification
+
 v3.5.3 Tidied up arrow display due to hardcoded node height variable 
 
 v3.5.1 Added sublabel for duplicate process creation
-
-v3.5.0 Duplicate processes now group components by output components
 -->
 
 <!DOCTYPE html>
@@ -793,6 +793,11 @@ function renderGroupedNode(name, groupNodes) {
       // Add a subtle line separator between different sets under the same unified process
       if (subsHtml !== '') {
           subsHtml += `<div style="height:1px; background:var(--border); margin: 6px 12px 6px 32px;"></div>`;
+      }
+
+      // --- NEW: Add the sublabel as a mini-header if it exists ---
+      if (n.sublabel) {
+          subsHtml += `<div style="font-size:10.5px; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:0.5px; padding-left:32px; margin:4px 0 2px 0;">${esc(n.sublabel)}</div>`;
       }
 
       connectedComps.forEach(cn => {
