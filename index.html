@@ -1,9 +1,9 @@
 <!--
+v3.5.1 Added sublabel for duplicate process creation
+
+v3.5.0 Duplicate processes now group components by output components
+
 v3.4.8 Re-loacted input/output tags to the front of component names
-
-v3.4.7 Edited "Add" in Chart View for usabiliyt, Added image padding to "Export Image"
-
-v3.4.6 Updated component dropdown functionality
 -->
 
 <!DOCTYPE html>
@@ -542,22 +542,32 @@ v3.4.6 Updated component dropdown functionality
 <div class="modal-bg" id="add-modal">
   <div class="modal">
     <div class="modal-title" id="add-modal-title">Add Process</div>
+
     <div class="form-row" id="parent-select-row" style="display:none">
       <label class="form-label" id="parent-select-label">Parent Process</label>
       <select class="form-input" id="parent-select"></select>
     </div>
+
     <div class="form-row" id="common-process-row" style="display:none">
       <label class="form-label">Reference Existing Process (Copies Data)</label>
       <select class="form-input" id="common-process-select" onchange="handleCommonProcessChange(this.value)"></select>
     </div>
+
     <div class="form-row">
       <label class="form-label">Name</label>
       <input class="form-input" id="add-name" placeholder="e.g. Assembly, Welding…" />
     </div>
+
+    <div class="form-row" id="sublabel-row" style="display:none">
+      <label class="form-label">Sublabel (required if referencing)</label>
+      <input class="form-input" id="add-sublabel" placeholder="e.g. Line 2, Trimmed FS..." />
+    </div>
+
     <div class="form-row">
       <label class="form-label">Description (optional)</label>
       <input class="form-input" id="add-desc" placeholder="Short description" />
     </div>
+
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('add-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="confirmAdd()">Add</button>
@@ -712,40 +722,33 @@ function setView(v){
 // ═══════════════════════════════════
 //  LIST VIEW 
 // ═══════════════════════════════════
-function getUpstreamComponents(nodeId, visited = new Set()) {
-  if (visited.has(nodeId)) return [];
-  visited.add(nodeId);
-  let comps = [];
-  const incoming = state.nodes.filter(n => (n.connections || []).includes(nodeId));
-  incoming.forEach(inc => {
-    if (inc.type === 'comp' || inc.type === 'sub') {
-      comps.push(inc);
-    } else {
-      comps = comps.concat(getUpstreamComponents(inc.id, visited));
-    }
-  });
-  return Array.from(new Set(comps)); 
-}
-
 function renderTree(){
-  const lbl=state.project.name||'Project';
-  document.getElementById('project-root-label').textContent=lbl;
-  const row=document.getElementById('project-root-row');
-  row.className='node-row'+(selectedNodes.length===0?' active':'');
-  const body=document.getElementById('tree-body');
-  
+  const lbl = state.project.name || 'Project';
+  document.getElementById('project-root-label').textContent = lbl;
+  const row = document.getElementById('project-root-row');
+  row.className = 'node-row' + (selectedNodes.length === 0 ? ' active' : '');
+  const body = document.getElementById('tree-body');
+
   const processNodes = state.nodes.filter(n => n.type === 'process' || n.type === 'node');
 
   if(!processNodes.length){
-    body.innerHTML='<div style="text-align:center;color:var(--text3);font-size:12px;padding:20px 10px">No processes yet.<br>Click <strong>+ Add</strong> to create one.</div>';
+    body.innerHTML = '<div style="text-align:center;color:var(--text3);font-size:12px;padding:20px 10px">No processes yet.<br>Click <strong>+ Add</strong> to create one.</div>';
     return;
   }
 
-  // AUTO-EXPAND LOGIC REMOVED FROM HERE:
-  // Moving expansion logic to the selection event allows you to manually 
-  // collapse menus without the code forcing them back open.
+  // 1. Group all process nodes by their Name
+  const groupedProcesses = {};
+  processNodes.forEach(n => {
+    if (!groupedProcesses[n.name]) groupedProcesses[n.name] = [];
+    groupedProcesses[n.name].push(n);
+  });
 
-  body.innerHTML=processNodes.map(n=>renderFlatNode(n)).join('');
+  // 2. Render each unified group
+  let treeHtml = '';
+  for (const name in groupedProcesses) {
+    treeHtml += renderGroupedNode(name, groupedProcesses[name]);
+  }
+  body.innerHTML = treeHtml;
 }
 
 function toggleConn(e, id) {
@@ -755,68 +758,75 @@ function toggleConn(e, id) {
   renderTree();
 }
 
-function renderFlatNode(n) {
-  const act = selectedNodes.includes(n.id) ? ' active' : '';
-  const ap = nodeMaxAP(n);
-  const apDot = ap ? `<span style="width:8px;height:8px;border-radius:50%;background:${ap==='H'?'var(--red)':ap==='M'?'var(--amber)':'var(--green)'};display:inline-block;margin-left:4px;flex-shrink:0"></span>` : '';
+function renderGroupedNode(name, groupNodes) {
+  // Group is active if ANY of its underlying nodes are selected
+  const act = groupNodes.some(n => selectedNodes.includes(n.id)) ? ' active' : '';
 
-  // 1. Identify Inputs (Upstream Recursive) and Outputs (Direct Connections)
-  const inputs = getUpstreamComponents(n.id).map(x => ({ 
-    ...x, 
-    role: 'INPUT', 
-    roleColor: 'var(--amber)' 
-  }));
-  
-  const outputs = (n.connections || [])
-    .map(cid => state.nodes.find(x => x.id === cid))
-    .filter(x => x && x.type === 'comp')
-    .map(x => ({ 
-      ...x, 
-      role: 'OUTPUT', 
-      roleColor: 'var(--green)' 
-    }));
+  // Get highest AP color dot for the combined group
+  let highestAp = '';
+  groupNodes.forEach(n => {
+    const ap = nodeMaxAP(n);
+    if (ap === 'H') highestAp = 'H';
+    else if (ap === 'M' && highestAp !== 'H') highestAp = 'M';
+    else if (ap === 'L' && !highestAp) highestAp = 'L';
+  });
+  const apDot = highestAp ? `<span style="width:8px;height:8px;border-radius:50%;background:${highestAp==='H'?'var(--red)':highestAp==='M'?'var(--amber)':'var(--green)'};display:inline-block;margin-left:4px;flex-shrink:0"></span>` : '';
 
-  const connectedComps = [...inputs, ...outputs];
-  const hasChildren = connectedComps.length > 0;
-  
-  // NEW: Check if any child component inside this process is currently selected
-  const isChildSelected = connectedComps.some(c => selectedNodes.includes(c.id));
-  
-  // The node is visually open if it was manually expanded OR if a child is selected
-  const isOpen = _expandedNodes.has(n.id) || isChildSelected;
-  
+  // Create a unified ID for toggling this specific group
+  const groupId = 'group-' + name.replace(/[^a-z0-9]/gi, '_');
+  const groupIdsString = groupNodes.map(n => n.id).join(','); // Pass all underlying IDs
+
+  let subsHtml = '';
+  let hasChildren = false;
+  let isChildSelected = false;
+
+  // Process each individual node's I/O sets
+  groupNodes.forEach((n, index) => {
+    const inputs = getUpstreamComponents(n.id).map(x => ({ ...x, role: 'INPUT', roleColor: 'var(--amber)' }));
+    const outputs = (n.connections || []).map(cid => state.nodes.find(x => x.id === cid)).filter(x => x && x.type === 'comp').map(x => ({ ...x, role: 'OUTPUT', roleColor: 'var(--green)' }));
+    const connectedComps = [...inputs, ...outputs];
+
+    if (connectedComps.length > 0) {
+      hasChildren = true;
+      if (connectedComps.some(c => selectedNodes.includes(c.id))) isChildSelected = true;
+
+      // Add a subtle line separator between different sets under the same unified process
+      if (subsHtml !== '') {
+          subsHtml += `<div style="height:1px; background:var(--border); margin: 6px 12px 6px 32px;"></div>`;
+      }
+
+      connectedComps.forEach(cn => {
+        const cAct = selectedNodes.includes(cn.id) ? ' active' : '';
+        subsHtml += `
+          <div class="node-row${cAct}" onclick="selectNode('${cn.id}')" style="padding-left:24px">
+            <div class="node-dot" style="background:var(--comp);width:6px;height:6px"></div>
+            <div class="node-label" style="font-size:11px; display:flex; align-items:center; gap:6px; overflow:visible;">
+              <span style="font-size:7px; padding:1px 4px; border-radius:3px; background:rgba(255,255,255,0.05); color:${cn.roleColor}; font-weight:900; letter-spacing:0.5px; border:1px solid rgba(255,255,255,0.05);">${cn.role}</span>
+              ${esc(cn.name)}
+            </div>
+          </div>`;
+      });
+    }
+  });
+
+  const isOpen = _expandedNodes.has(groupId) || isChildSelected;
+
   let arrowHtml = `<span style="display:inline-block;width:14px;margin-right:2px;"></span>`;
   if (hasChildren) {
     const rot = isOpen ? '90deg' : '0deg';
-    arrowHtml = `<span onclick="toggleConn(event, '${n.id}')" style="display:inline-block;width:14px;margin-right:2px;font-size:9px;cursor:pointer;transform:rotate(${rot});transition:transform 0.15s">▶</span>`;
+    arrowHtml = `<span onclick="toggleConn(event, '${groupId}')" style="display:inline-block;width:14px;margin-right:2px;font-size:9px;cursor:pointer;transform:rotate(${rot});transition:transform 0.15s">▶</span>`;
   }
 
-// 2. Build the children HTML strings
-  let subsHtml = `<div class="node-children" id="children-${n.id}" style="display:${isOpen ? 'block' : 'none'}">`;
-  connectedComps.forEach(cn => {
-    const cAct = selectedNodes.includes(cn.id) ? ' active' : '';
-    subsHtml += `
-      <div class="node-row${cAct}" onclick="selectNode('${cn.id}')" style="padding-left:24px">
-        <div class="node-dot" style="background:var(--comp);width:6px;height:6px"></div>
-        <div class="node-label" style="font-size:11px; display:flex; align-items:center; gap:6px; overflow:visible;">
-          <span style="font-size:7px; padding:1px 4px; border-radius:3px; background:rgba(255,255,255,0.05); color:${cn.roleColor}; font-weight:900; letter-spacing:0.5px; border:1px solid rgba(255,255,255,0.05);">${cn.role}</span>
-          ${esc(cn.name)}
-        </div>
-      </div>`;
-  });
-  subsHtml += `</div>`;
-
-  // 3. Return the combined string
   return `<div class="tree-node">
-    <div class="node-row${act}" onclick="selectNode('${n.id}')">
+    <div class="node-row${act}" onclick="selectNodeGroup('${groupId}', '${groupIdsString}')">
       ${arrowHtml}
       <div class="node-dot" style="background:var(--process)"></div>
-      <div class="node-label">${esc(n.name)}${apDot}</div>
+      <div class="node-label">${esc(name)}${apDot}</div>
       <div class="node-actions">
-        <button class="node-btn" onclick="event.stopPropagation();deleteNode('${n.id}')">✕</button>
+        <button class="node-btn" onclick="event.stopPropagation();deleteNodeGroup('${groupIdsString}')">✕</button>
       </div>
     </div>
-    ${subsHtml}
+    <div class="node-children" id="children-${groupId}" style="display:${isOpen ? 'block' : 'none'}">${subsHtml}</div>
   </div>`;
 }
 
@@ -1122,7 +1132,10 @@ function renderChart(){
         div.appendChild(typeLabel);
     }
 
-    const nm=document.createElement('div'); nm.className='fc-node-name'; nm.textContent=n.name;
+    const nm = document.createElement('div'); 
+    nm.className = 'fc-node-name'; 
+    // Render the base name, and if a sublabel exists, render it smaller beneath it
+    nm.innerHTML = n.sublabel ? `${esc(n.name)} <br><span style="font-size:10px; opacity:0.8;">(${esc(n.sublabel)})</span>` : esc(n.name);
     div.appendChild(nm);
 
     div.addEventListener('mouseenter',()=>{ if(_connectMode&&_connectSource&&_connectSource!==n.id) div.classList.add('connect-hover'); });
@@ -1273,6 +1286,7 @@ function showCtx(x,y,n){
     items.push({label:'⇢ Connect from here', fn:()=>{ _connectSource=n.id; enterConnectMode(); }});
     items.push({sep:true});
     items.push({label:'Rename', fn:()=>renameNode(n.id)});
+    items.push({label:'Edit Sublabel', fn:()=>editSublabel(n.id)}); // <-- NEW OPTION
     items.push({label:'Delete', danger:true, fn:()=>deleteNode(n.id)});
   }
 
@@ -1349,38 +1363,61 @@ function selectProject(){
 }
 
 function selectNode(id) {
-  // Check if the user is clicking the exact node that is already active
   const isAlreadySelected = selectedNodes.length === 1 && selectedNodes[0] === id;
   const n = state.nodes.find(x => x.id === id);
   
   if (n && (n.type === 'process' || n.type === 'node')) {
-      // 1. Process Logic: Always select it, but toggle its dropdown menu
       selectedNodes = [id];
+      // Convert the name to the unified group ID
+      const groupId = 'group-' + n.name.replace(/[^a-z0-9]/gi, '_');
       
       if (isAlreadySelected) {
-          if (_expandedNodes.has(id)) {
-              _expandedNodes.delete(id); // Collapse on second click
-          } else {
-              _expandedNodes.add(id);    // Expand
-          }
+          if (_expandedNodes.has(groupId)) _expandedNodes.delete(groupId);
+          else _expandedNodes.add(groupId);
       } else {
-          _expandedNodes.add(id); // Always expand when newly selected
+          _expandedNodes.add(groupId);
       }
-      
   } else {
-      // 2. Component Logic: Toggle selection on and off
-      if (isAlreadySelected) {
-          // Deselect the component if clicked again.
-          // This removes the "force open" state from related processes.
-          selectedNodes = []; 
-      } else {
-          // Select the component
-          selectedNodes = [id]; 
-      }
+      if (isAlreadySelected) selectedNodes = []; 
+      else selectedNodes = [id]; 
   }
 
   updateSelectionVisuals();
   updatePfmeaView();
+  saveState();
+}
+
+// Triggered when clicking a unified group row in List View
+function selectNodeGroup(groupId, idsString) {
+  const ids = idsString.split(',');
+  const isAlreadySelected = selectedNodes.length === ids.length && ids.every(id => selectedNodes.includes(id));
+
+  if (isAlreadySelected) {
+      if (_expandedNodes.has(groupId)) _expandedNodes.delete(groupId);
+      else _expandedNodes.add(groupId);
+  } else {
+      selectedNodes = [...ids]; // Select ALL underlying nodes
+      _expandedNodes.add(groupId);
+  }
+
+  updateSelectionVisuals();
+  updatePfmeaView();
+  saveState();
+}
+
+function deleteNodeGroup(idsString) {
+  if(!confirm('Delete ALL processes with this name and their PFMEA data?')) return;
+  const ids = idsString.split(',');
+  ids.forEach(id => {
+      state.nodes = state.nodes.filter(n => n.id !== id);
+      state.nodes.forEach(n => { n.connections = (n.connections||[]).filter(c => c !== id); });
+      selectedNodes = selectedNodes.filter(x => x !== id);
+  });
+  if(selectedNodes.length === 0) selectProject();
+  else updatePfmeaView();
+
+  renderTree();
+  if(currentView === 'chart') renderChart();
   saveState();
 }
 
@@ -1666,22 +1703,32 @@ function openAddModalSmart(type){ openAddModal(type, null); }
 // ═══════════════════════════════════
 //  NODES CRUD
 // ═══════════════════════════════════
-function openAddModal(type, parentId){
+function openAddModal(type, parentId) {
   addCtx.type = type;
   addCtx.parentId = parentId;
   const titles = { process: 'Add Process', comp: 'Add Component', sub: 'Add Sub-component', node: 'Add Node' };
   document.getElementById('add-modal-title').textContent = titles[type] || 'Add Node';
-  document.getElementById('add-name').value='';
-  document.getElementById('add-desc').value='';
-  document.getElementById('parent-select-row').style.display='none';
+  
+  // Reset fields
+  const nameInput = document.getElementById('add-name');
+  nameInput.value = '';
+  nameInput.readOnly = false;
+  nameInput.style.opacity = '1';
+  document.getElementById('add-sublabel').value = '';
+  document.getElementById('sublabel-row').style.display = 'none';
+  document.getElementById('add-desc').value = '';
+  document.getElementById('parent-select-row').style.display = 'none';
   
   const cpRow = document.getElementById('common-process-row');
   if (type === 'process') {
-    const existingProcesses = state.nodes.filter(n => n.type === 'process');
-    if (existingProcesses.length > 0) {
+    // Grab only UNIQUE process names so the dropdown isn't cluttered
+    const uniqueProcesses = [...new Set(state.nodes.filter(n => n.type === 'process').map(n => n.name))];
+    
+    if (uniqueProcesses.length > 0) {
       let opts = '<option value="">-- Custom New Process --</option>';
-      existingProcesses.forEach(n => {
-        opts += `<option value="${n.id}">${esc(n.name)}</option>`;
+      uniqueProcesses.forEach(name => {
+        const refId = state.nodes.find(n => n.type === 'process' && n.name === name).id;
+        opts += `<option value="${refId}">${esc(name)}</option>`;
       });
       document.getElementById('common-process-select').innerHTML = opts;
       cpRow.style.display = 'block';
@@ -1693,25 +1740,71 @@ function openAddModal(type, parentId){
   }
 
   openModal('add-modal');
-  setTimeout(()=>document.getElementById('add-name').focus(),100);
+  setTimeout(() => nameInput.focus(), 100);
 }
 
 function handleCommonProcessChange(id) {
-  if(!id) { document.getElementById('add-name').value = ''; return; }
+  const nameInput = document.getElementById('add-name');
+  const subRow = document.getElementById('sublabel-row');
+  if (!id) { 
+    nameInput.value = ''; 
+    nameInput.readOnly = false;
+    nameInput.style.opacity = '1';
+    subRow.style.display = 'none';
+    return; 
+  }
   const node = state.nodes.find(n => n.id === id);
-  if(node) document.getElementById('add-name').value = node.name;
+  if (node) {
+    nameInput.value = node.name;
+    nameInput.readOnly = true;     // Lock the name
+    nameInput.style.opacity = '0.6'; // Dim it so it looks locked
+    subRow.style.display = 'block';  // Show the sublabel field
+    document.getElementById('add-sublabel').focus();
+  }
 }
 
 function confirmAdd(){
-  const name=document.getElementById('add-name').value.trim();
-  if(!name){alert('Please enter a name.');return;}
-  let clonedPfmea = [];
+  const name = document.getElementById('add-name').value.trim();
+  const sublabel = document.getElementById('add-sublabel').value.trim();
+  if(!name){ alert('Please enter a name.'); return; }
+  
   const cpSelect = document.getElementById('common-process-select');
-  if (addCtx.type === 'process' && cpSelect && cpSelect.value) {
+  const isRef = addCtx.type === 'process' && cpSelect && cpSelect.value;
+  
+  // DUPLICATE BLOCKER LOGIC
+  if (!isRef && addCtx.type === 'process') {
+    const baseNameExists = state.nodes.some(n => n.type === 'process' && n.name.toLowerCase() === name.toLowerCase());
+    if (baseNameExists) {
+         alert(`A process named "${name}" already exists.\n\nPlease select it from the "Reference Existing Process" dropdown to create a new step for it.`);
+         return;
+    }
+  } else if (isRef) {
+    if (!sublabel) { alert('Please provide a Sublabel when referencing an existing process.'); return; }
+    const exactInstanceExists = state.nodes.some(n => n.type === 'process' && n.name.toLowerCase() === name.toLowerCase() && (n.sublabel||'').toLowerCase() === sublabel.toLowerCase());
+    if (exactInstanceExists) {
+         alert(`An instance of "${name}" with sublabel "${sublabel}" already exists.`);
+         return;
+    }
+  }
+  
+  let clonedPfmea = [];
+  if (isRef) {
     const refNode = state.nodes.find(n => n.id === cpSelect.value);
     if (refNode && refNode.pfmea) clonedPfmea = JSON.parse(JSON.stringify(refNode.pfmea)).map(r => ({...r, id: genId()}));
   }
-  const nn={id:genId(),name,type: addCtx.type || 'node', pfmea:clonedPfmea,connections:[],x:null,y:null};
+  
+  // Attach the sublabel to the node state
+  const nn = { 
+    id: genId(), 
+    name: name, 
+    sublabel: isRef ? sublabel : '', 
+    type: addCtx.type || 'node', 
+    pfmea: clonedPfmea, 
+    connections: [], 
+    x: null, 
+    y: null 
+  };
+  
   state.nodes.push(nn);
   closeModal('add-modal');
   renderTree();
@@ -1721,13 +1814,40 @@ function confirmAdd(){
 }
 
 function renameNode(id){
-  const res=findNode(id); if(!res) return;
-  const name=prompt('Rename:',res.node.name);
+  const res = findNode(id); 
+  if(!res) return;
+  
+  const name = prompt('Rename:', res.node.name);
   if(name?.trim()){
-    res.node.name=name.trim();
+    const newName = name.trim();
+    
+    // NEW: Check if the new name is already taken by a DIFFERENT node
+    const nameExists = state.nodes.some(n => n.id !== id && n.name.toLowerCase() === newName.toLowerCase());
+    if (nameExists) {
+      alert(`An element named "${newName}" already exists. Please use a unique name.`);
+      return;
+    }
+    
+    res.node.name = newName;
     renderTree();
     if(currentView==='chart') renderChart();
-    if(selectedNodes.includes(id)) document.getElementById('pfmea-title').textContent=name.trim();
+    if(selectedNodes.includes(id)) document.getElementById('pfmea-title').textContent = newName;
+    saveState();
+  }
+}
+
+function editSublabel(id) {
+  const res = findNode(id); 
+  if (!res) return;
+  
+  const currentSub = res.node.sublabel || '';
+  const sub = prompt('Edit Sublabel (leave blank to remove):', currentSub);
+  
+  // If user clicks Cancel, 'sub' is null. If they click OK, it's a string.
+  if (sub !== null) {
+    res.node.sublabel = sub.trim();
+    renderTree();
+    if(currentView === 'chart') renderChart();
     saveState();
   }
 }
