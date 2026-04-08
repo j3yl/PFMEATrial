@@ -1,9 +1,9 @@
 <!--
+v3.6.0 Updated app theme to follow user's browser preference
+
 v3.5.5 Added sublabel to list view for easier identification
 
 v3.5.3 Tidied up arrow display due to hardcoded node height variable 
-
-v3.5.1 Added sublabel for duplicate process creation
 -->
 
 <!DOCTYPE html>
@@ -27,6 +27,22 @@ v3.5.1 Added sublabel for duplicate process creation
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* Auto-switch to Light Mode based on browser/OS settings */
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f3f4f6; 
+      --bg2: #ffffff; 
+      --bg3: #e5e7eb;
+      --border: rgba(0,0,0,0.1); 
+      --border2: rgba(0,0,0,0.2);
+      --text: #111827; 
+      --text2: #4b5563; 
+      --text3: #6b7280;
+      --shadow: 0 4px 20px rgba(0,0,0,0.08);
+      /* Keeping accents/status colors the same as they work on both */
+    }
+  }
 
   /* Top bar */
   .topbar { display:flex; align-items:center; gap:16px; padding:0 24px; height:56px; background:var(--bg2); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:100; }
@@ -1040,7 +1056,7 @@ function renderChart(){
 
   svg.innerHTML=`<defs>
     <marker id="arrh" viewBox="0 0 10 10" refX="0" refY="5" markerWidth="5" markerHeight="5" orient="auto">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(255,255,255,0.35)" />
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--text3)" />
     </marker>
   </defs>`;
 
@@ -1182,7 +1198,7 @@ function renderConnections(){
         path = document.createElementNS('http://www.w3.org/2000/svg','path');
         path.id = `conn-${src.id}-${tid}`;
         path.setAttribute('fill','none');
-        path.setAttribute('stroke','rgba(255,255,255,0.25)');
+        path.setAttribute('stroke','var(--border2)');
         path.setAttribute('stroke-width','1.5');
         path.setAttribute('marker-end','url(#arrh)');
         path.setAttribute('class','conn-path'); 
@@ -2351,7 +2367,7 @@ function exportChartImage() {
   const PADDING_VALUE = 35;
 
   const exportOptions = {
-    backgroundColor: '#0f1117',
+    backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--bg').trim(),
     // Set the final PNG dimensions to tightly wrap the content + padding
     width: contentWidth + (PADDING_VALUE * 2),
     height: contentHeight + (PADDING_VALUE * 2),
