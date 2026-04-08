@@ -1,9 +1,9 @@
 <!--
+v3.4.8 Re-loacted input/output tags to the front of component names
+
 v3.4.7 Edited "Add" in Chart View for usabiliyt, Added image padding to "Export Image"
 
 v3.4.6 Updated component dropdown functionality
-
-v3.4.5 Update dropdown menu functionality
 -->
 
 <!DOCTYPE html>
@@ -791,7 +791,7 @@ function renderFlatNode(n) {
     arrowHtml = `<span onclick="toggleConn(event, '${n.id}')" style="display:inline-block;width:14px;margin-right:2px;font-size:9px;cursor:pointer;transform:rotate(${rot});transition:transform 0.15s">▶</span>`;
   }
 
-  // 2. Build the children HTML strings
+// 2. Build the children HTML strings
   let subsHtml = `<div class="node-children" id="children-${n.id}" style="display:${isOpen ? 'block' : 'none'}">`;
   connectedComps.forEach(cn => {
     const cAct = selectedNodes.includes(cn.id) ? ' active' : '';
@@ -799,8 +799,8 @@ function renderFlatNode(n) {
       <div class="node-row${cAct}" onclick="selectNode('${cn.id}')" style="padding-left:24px">
         <div class="node-dot" style="background:var(--comp);width:6px;height:6px"></div>
         <div class="node-label" style="font-size:11px; display:flex; align-items:center; gap:6px; overflow:visible;">
-          ${esc(cn.name)}
           <span style="font-size:7px; padding:1px 4px; border-radius:3px; background:rgba(255,255,255,0.05); color:${cn.roleColor}; font-weight:900; letter-spacing:0.5px; border:1px solid rgba(255,255,255,0.05);">${cn.role}</span>
+          ${esc(cn.name)}
         </div>
       </div>`;
   });
