@@ -1,9 +1,9 @@
 <!--
+v3.7.1 Changed tooltip trigger to hover from click
+
 v3.7.0 Added tooltip for PFMEA table headers to show full text
 
 v3.6.0 Updated app theme to follow user's browser preference
-
-v3.5.5 Added sublabel to list view for easier identification
 -->
 
 <!DOCTYPE html>
@@ -336,15 +336,18 @@ v3.5.5 Added sublabel to list view for easier identification
     transition: all 0.2s ease;
   }
 
-  .th-tooltip-box.show {
+  /* Show the tooltip when hovering the button OR the box itself */
+  .th-info-btn:hover ~ .th-tooltip-box,
+  .th-tooltip-box:hover {
     opacity: 1;
     pointer-events: auto;
-    transform: translateY(0);
+    transform: translateX(-50%) translateY(0);
   }
 
-  th.z-elevated {
-  z-index: 50 !important;
-}
+  /* Automatically elevate the column z-index when hovering anywhere in the header */
+  .th-with-tooltip:hover {
+    z-index: 50 !important;
+  }
 </style>
 </head>
 <body>
@@ -598,7 +601,7 @@ v3.5.5 Added sublabel to list view for easier identification
             <th class="th-with-tooltip" style="min-width:110px">
               1. Process Item / System / Part
               
-              <div class="th-info-btn" onclick="toggleTooltip(event, 'tt-item1')">i</div>
+              <div class="th-info-btn">i</div>
               
               <div class="th-tooltip-box" id="tt-item1">
                 System, Subsystem, Part Element of Name of Process Item
