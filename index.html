@@ -1,9 +1,9 @@
 <!--
+v3.7.3 Expanded Tooltip content
+
 v3.7.2 Changed exported Excel header background to light gray for better readability
 
 v3.7.1 Changed tooltip trigger to hover from click
-
-v3.7.0 Added tooltip for PFMEA table headers to show full text
 -->
 
 <!DOCTYPE html>
@@ -471,13 +471,13 @@ v3.7.0 Added tooltip for PFMEA table headers to show full text
                   </tr>
                   <tr>
                     <th class="th-with-tooltip" style="min-width:110px">
-                      1. Process Item / System / Part
-                      
-                      <div class="th-info-btn" onclick="toggleTooltip(event, 'tt-item1')">i</div>
-                      
-                      <div class="th-tooltip-box" id="tt-item1">
-                        System, Subsystem, Part Element of Name of Process Item
+                      <div class="tooltip-wrapper">
+                        <div class="th-info-btn">i</div>
+                        <div class="th-tooltip-box">
+                          PUT YOUR TOOLTIP INFO HERE
+                        </div>
                       </div>
+                      <span>THE COLUMN TITLE GOES HERE</span>
                     </th>
                     <th style="min-width:110px">2. Process Step &amp; Focus Element</th>
                     <th style="min-width:110px">3. Work Element (4M)</th>
@@ -599,20 +599,52 @@ v3.7.0 Added tooltip for PFMEA table headers to show full text
           </tr>
           <tr>
             <th class="th-with-tooltip" style="min-width:110px">
-              1. Process Item / System / Part
-              
-              <div class="th-info-btn">i</div>
-              
-              <div class="th-tooltip-box" id="tt-item1">
-                System, Subsystem, Part Element of Name of Process Item
+              <div class="tooltip-wrapper">
+                <div class="th-info-btn">i</div>
+                <div class="th-tooltip-box">
+                  System, Subsystem, Part Element of Name of Process
+                </div>
               </div>
+              <span>1. Process Item / System / Part</span>
             </th>
-            <th style="min-width:110px">2. Process Step &amp; Focus Element</th>
-            <th style="min-width:110px">3. Work Element (4M)</th>
-            <th style="min-width:120px">1. Function of Process Item</th>
-            <th style="min-width:120px">2. Function of Process Step</th>
-            <th style="min-width:120px">3. Function of Work Element</th>
-            <th style="min-width:130px">1. Failure Effects (FE)</th>
+            <th class="th-with-tooltip" style="min-width:110px">2. Process Step Station No.<br>&amp; Name of Focus Element</th>
+            <th class="th-with-tooltip" style="min-width:110px">
+              <div class="tooltip-wrapper">
+                <div class="th-info-btn">i</div>
+                <div class="th-tooltip-box">
+                  Man, Machine, Material (Indirect), Milieu (Environment), etc.
+                </div>
+              </div>
+              <span>3. Process Work Element (4M) </span>
+            </th>
+            <th class="th-with-tooltip" style="min-width:110px">
+              <div class="tooltip-wrapper">
+                <div class="th-info-btn">i</div>
+                <div class="th-tooltip-box">
+                  In-plant, Ship-to-Plant, Process Item, End user, when known
+                </div>
+              </div>
+              <span>1. Function of Process Item</span>
+            </th>
+            <th class="th-with-tooltip" style="min-width:110px">
+              <div class="tooltip-wrapper">
+                <div class="th-info-btn">i</div>
+                <div class="th-tooltip-box">
+                  Quantitative value is optional
+                </div>
+              </div>
+              <span>2. Function of Process Step<br>&amp; Product Characteristic</span>
+            </th>
+            <th style="min-width:120px">3. Function of the<br>Process Work Element &amp;<br>Process Characteristic</th>
+            <th class="th-with-tooltip" style="min-width:110px">
+              <div class="tooltip-wrapper">
+                <div class="th-info-btn">i</div>
+                <div class="th-tooltip-box">
+                  In-plant, Ship-to-Plant, Process Item, End user, when known
+                </div>
+              </div>
+              <span>1. Failure Effects (FE)</span>
+            </th>
             <th class="th-vert"><span>Severity (S) of FE</span></th>
             <th style="min-width:130px">2. Failure Mode (FM)</th>
             <th style="min-width:130px">3. Failure Cause (FC)</th>
