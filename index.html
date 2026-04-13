@@ -772,6 +772,7 @@ let addCtx = { type:null, parentId:null };
 let _connectMode = false;
 let _connectSource = null;
 let _expandedNodes = new Set(); 
+let _continuousConnect = false;
 
 function genId(){ return '_'+Math.random().toString(36).slice(2,9); }
 
@@ -1246,8 +1247,14 @@ function renderChart(){
             if(!src.connections) src.connections=[]; 
             if(!src.connections.includes(n.id)) src.connections.push(n.id); 
           }
-          _connectSource = null; 
-          exitConnectMode();
+          
+          _connectSource = null; // Clear the source so you can pick a new one
+          
+          // Only auto-exit if we are NOT in continuous mode
+          if (!_continuousConnect) {
+            exitConnectMode(); 
+          }
+          
           renderChart(); saveState();
         }
         return;
@@ -1296,9 +1303,11 @@ function renderChart(){
   applyTransform();
 }
 
-function enterConnectMode(sourceId = null){
+function enterConnectMode(sourceId = null, isContinuous = false){
   _connectMode=true; 
   _connectSource=sourceId; // Accepts the specific node ID instead of hard-resetting to null
+  _continuousConnect = isContinuous;
+
   document.getElementById('chart-viewport').classList.add('connect-mode');
   document.getElementById('connect-btn').textContent='✕ Done'; 
   document.getElementById('connect-btn').style.background='var(--amber)';
@@ -1319,7 +1328,19 @@ function exitConnectMode(){
   const btn=document.getElementById('connect-btn');
   btn.textContent='⇢ Connect'; btn.style.background=''; btn.style.color=''; btn.style.border='';
 }
-function toggleConnectMode(){ _connectMode?exitConnectMode():enterConnectMode(); }
+
+function toggleConnectMode() { 
+  if (_connectMode) {
+    exitConnectMode();
+  } else {
+    // If exactly one node is selected, lock it in (single connection).
+    // If NO nodes are selected, enter continuous mode!
+    const startingNodeId = selectedNodes.length === 1 ? selectedNodes[0] : null;
+    const isContinuous = (startingNodeId === null);
+    
+    enterConnectMode(startingNodeId, isContinuous);
+  }
+}
 
 function renderConnections(){
   const byId={};
