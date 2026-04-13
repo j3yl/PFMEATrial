@@ -1,9 +1,9 @@
 <!--
+v3.7.4 Edited Exported Excel to reflect AQMS format
+
 v3.7.3 Expanded Tooltip content
 
 v3.7.2 Changed exported Excel header background to light gray for better readability
-
-v3.7.1 Changed tooltip trigger to hover from click
 -->
 
 <!DOCTYPE html>
@@ -2162,13 +2162,13 @@ function exportCurrentXLSX(){
   const headers = [
     {label:'Level', col:0, bg:COL_HDR, vert:false},
     {label:'Name', col:1, bg:COL_HDR, vert:false},
-    {label:'Process Item', col:2, bg:COL_STEP2L, vert:false},
-    {label:'2. Process Step', col:3, bg:COL_STEP2L, vert:false},
-    {label:'3. Process Work Element', col:4, bg:COL_STEP2L, vert:false},
-    {label:'1. Function of the Process Item', col:5, bg:COL_STEP3L, vert:false},
-    {label:'2. Function of the Process Step and Product Characteristic', col:6, bg:COL_STEP3L, vert:false},
+    {label:'1. Process Item System, Subsystem, Part Element or Name of Process', col:2, bg:COL_STEP2L, vert:false},
+    {label:'2. Process Step Station No. and Name of Focus Element', col:3, bg:COL_STEP2L, vert:false},
+    {label:'3. Process Work Element [Man, Machine, Material(Indirect), Milieu(Environment). etc.]', col:4, bg:COL_STEP2L, vert:false},
+    {label:'1. Function of the Process Item [In-plant, Ship-to-plant, Process Item, End user, when known]', col:5, bg:COL_STEP3L, vert:false},
+    {label:'2. Function of the Process Step and Product Characteristic (Quantitative value is optional)', col:6, bg:COL_STEP3L, vert:false},
     {label:'3. Function of the Process Work Element and Process Characteristic', col:7, bg:COL_STEP3L, vert:false},
-    {label:'1. Failure Effects', col:8, bg:COL_STEP4L, vert:false},
+    {label:'1. Failure Effects [In-plant, Ship-to-plant, Process Item, End user, when known]', col:8, bg:COL_STEP4L, vert:false},
     {label:'Severity (S) of FE', col:9, bg:COL_STEP4L, vert:true},
     {label:'2. Failure Mode (FM) of the Process Step', col:10, bg:COL_STEP4L, vert:false},
     {label:'3. Failure Cause (FC) of the Work Element', col:11, bg:COL_STEP4L, vert:false},
@@ -2246,7 +2246,7 @@ function exportCurrentXLSX(){
     R++;
   });
 
-  const colW = [14,18,18,18,18,22,28,28,22,5,22,22,20,5,20,5,5,6,20,20,14,12,12,20,14,5,5,5,5];
+  const colW = [14,18,18,18,18,22,22,22,22,5,22,22,20,5,20,5,5,6,20,20,14,12,12,20,14,5,5,5,5];
   ws['!cols'] = colW.map(w => ({wch:w}));
 
   ws['!rows'] = [];
