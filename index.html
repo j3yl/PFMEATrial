@@ -1,9 +1,9 @@
 <!--
+v3.7.6 Updated Hover to delete connectection red highlight and arrow style
+
 v3.7.5 Streamlined "connect from here" flow, start node automatically selected, exits automatically upon connection
 
 v3.7.4 Edited Exported Excel to reflect AQMS format
-
-v3.7.3 Expanded Tooltip content
 -->
 
 <!DOCTYPE html>
@@ -133,7 +133,7 @@ v3.7.3 Expanded Tooltip content
   
   /* Clickable Connections */
   .conn-path { pointer-events: auto; transition: stroke 0.15s, stroke-width 0.15s; }
-  .conn-path:hover { stroke: var(--red) !important; stroke-width: 3.5px !important; }
+  .conn-path:hover { stroke: var(--red) !important; stroke-width: 3.5px !important; marker-end: url(#arrh-hover) !important; }
 
   /* Flowchart node boxes */
   .fc-node { position:absolute; border:1.5px solid var(--border2); border-radius:8px; background:var(--bg2); cursor:pointer; transition:border-color .15s, box-shadow .15s; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:8px 12px; user-select:none; }
@@ -1183,6 +1183,10 @@ function renderChart(){
   svg.innerHTML=`<defs>
     <marker id="arrh" viewBox="0 0 10 10" refX="0" refY="5" markerWidth="5" markerHeight="5" orient="auto">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--text3)" />
+    </marker>
+
+    <marker id="arrh-hover" viewBox="0 0 10 10" refX="0" refY="5" markerWidth="3" markerHeight="3" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--red)" />
     </marker>
   </defs>`;
 
