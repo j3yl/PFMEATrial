@@ -1,9 +1,9 @@
 <!--
+v3.7.5 Streamlined "connect from here" flow, start node automatically selected, exits automatically upon connection
+
 v3.7.4 Edited Exported Excel to reflect AQMS format
 
 v3.7.3 Expanded Tooltip content
-
-v3.7.2 Changed exported Excel header background to light gray for better readability
 -->
 
 <!DOCTYPE html>
@@ -1243,6 +1243,7 @@ function renderChart(){
             if(!src.connections.includes(n.id)) src.connections.push(n.id); 
           }
           _connectSource = null; 
+          exitConnectMode();
           renderChart(); saveState();
         }
         return;
@@ -1291,14 +1292,22 @@ function renderChart(){
   applyTransform();
 }
 
-function enterConnectMode(){
-  _connectMode=true; _connectSource=null;
+function enterConnectMode(sourceId = null){
+  _connectMode=true; 
+  _connectSource=sourceId; // Accepts the specific node ID instead of hard-resetting to null
   document.getElementById('chart-viewport').classList.add('connect-mode');
   document.getElementById('connect-btn').textContent='✕ Done'; 
   document.getElementById('connect-btn').style.background='var(--amber)';
   document.getElementById('connect-btn').style.color='#fff';
   document.getElementById('connect-btn').style.border='none';
+
+  // Instantly highlight the source node if "Connect from here" was used
+  if(_connectSource){
+    const srcDiv = document.querySelector(`.fc-node[data-id="${_connectSource}"]`);
+    if(srcDiv) srcDiv.classList.add('connect-source');
+  }
 }
+
 function exitConnectMode(){
   _connectMode=false; _connectSource=null;
   document.getElementById('chart-viewport').classList.remove('connect-mode');
@@ -1405,7 +1414,7 @@ function showCtx(x,y,n){
     }});
   } else {
     items.push({label:'Open PFMEA', fn:()=>selectNode(n.id)});
-    items.push({label:'⇢ Connect from here', fn:()=>{ _connectSource=n.id; enterConnectMode(); }});
+    items.push({label:'⇢ Connect from here', fn:()=>enterConnectMode(n.id)});
     items.push({sep:true});
     items.push({label:'Rename', fn:()=>renameNode(n.id)});
     items.push({label:'Edit Sublabel', fn:()=>editSublabel(n.id)}); // <-- NEW OPTION
@@ -2246,7 +2255,7 @@ function exportCurrentXLSX(){
     R++;
   });
 
-  const colW = [18,20,20,20,20,22,22,22,22,5,22,22,20,5,20,5,5,6,20,20,14,12,12,20,14,5,5,5,5];
+  const colW = [14,18,18,18,18,22,22,22,22,5,22,22,20,5,20,5,5,6,20,20,14,12,12,20,14,5,5,5,5];
   ws['!cols'] = colW.map(w => ({wch:w}));
 
   ws['!rows'] = [];
