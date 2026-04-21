@@ -1,9 +1,9 @@
 <!--
-v3.7.7 Continuous connect mode only when connect selected first, "connect from here" and selecting a node before connect align to single connection; auto-exit
+v4.0.1 Relocated Export button, removed add row button from top banner
 
-v3.7.6 Updated Hover to delete connectection red highlight and arrow style
+v4.0.0 Added password-protected master PFMEA Library
 
-v3.7.5 Streamlined "connect from here" flow, start node automatically selected, exits automatically upon connection
+v3.7.8 tooltip position and animation change, excel formatting tidied up, sub-component removed from dropdown menu 
 -->
 
 <!DOCTYPE html>
@@ -307,9 +307,9 @@ v3.7.5 Streamlined "connect from here" flow, start node automatically selected, 
 
   .th-tooltip-box {
     position: absolute;
-    top: 28px;
-    right: auto;
-    left: calc(100% - 22px);
+    top: 4px;
+    right: 26px;
+    left: auto;
     width: 220px;
     background: var(--bg2);
     border: 1px solid var(--border2);
@@ -361,25 +361,6 @@ v3.7.5 Streamlined "connect from here" flow, start node automatically selected, 
   <span id="sync-status" style="font-size:11px;color:var(--text3);margin-left:auto;margin-right:4px"></span>
   <div class="topbar-actions" style="margin-left:0">
     <button class="btn btn-ghost" onclick="openProjectModal()">⚙ Settings</button>
-    <div class="file-dropdown-wrap" style="display:flex;gap:0">
-      <button class="btn btn-primary" onclick="exportCurrentXLSX()" style="border-radius:7px 0 0 7px;padding-right:12px">📊 Export Excel</button>
-      <button class="btn btn-primary" onclick="toggleFileDropdown(event)" style="border-radius:0 7px 7px 0;padding:7px 9px;border-left:1px solid rgba(255,255,255,0.2)">▾</button>
-      <div class="file-dropdown" id="file-dropdown">
-        <div class="add-dd-item" onclick="closeFileDropdown();exportCurrentXLSX()">
-          <div class="add-dd-icon" style="background:rgba(52,199,123,.15);">📊</div>
-          <div><div class="add-dd-label">Export as Excel</div><div class="add-dd-sub">Full PFMEA .xlsx with formatting</div></div>
-        </div>
-        <div class="add-dd-item" onclick="closeFileDropdown();exportJSON()">
-          <div class="add-dd-icon" style="background:rgba(79,126,248,.15);">💾</div>
-          <div><div class="add-dd-label">Export as JSON</div><div class="add-dd-sub">Save project backup</div></div>
-        </div>
-        <div class="add-dd-sep"></div>
-        <div class="add-dd-item" onclick="closeFileDropdown();importJSON()">
-          <div class="add-dd-icon" style="background:rgba(245,158,11,.15);">📂</div>
-          <div><div class="add-dd-label">Import JSON</div><div class="add-dd-sub">Load a saved project</div></div>
-        </div>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -390,6 +371,7 @@ v3.7.5 Streamlined "connect from here" flow, start node automatically selected, 
       <div class="view-toggle">
         <button class="view-btn active" id="btn-list" onclick="setView('list')">☰ List</button>
         <button class="view-btn" id="btn-chart" onclick="setView('chart')">⬡ Chart</button>
+        <button class="view-btn" id="btn-library" onclick="setView('library')">📚 Master</button>
       </div>
       <div class="add-dropdown-wrap" id="add-dropdown-wrap">
         <button class="btn btn-primary btn-sm" id="add-main-btn" onclick="toggleAddDropdown(event)">+ Add ▾</button>
@@ -529,6 +511,12 @@ v3.7.5 Streamlined "connect from here" flow, start node automatically selected, 
         </div>
       </div>
     </div>
+
+    <div id="library-left-panel" style="display:none; flex:1; padding:20px; color:var(--text3); text-align:center; font-size:13px;">
+       <div style="font-size:24px; margin-bottom:8px;">📁</div>
+       Library Categories<br><br>
+       <span style="opacity:0.6; font-size:11px;">(Standard Process categories will appear here)</span>
+    </div>
   </div>
 
   <div class="resizer" id="resizer"></div>
@@ -541,7 +529,27 @@ v3.7.5 Streamlined "connect from here" flow, start node automatically selected, 
       </div>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
         <span id="rpn-summary" style="font-size:12px;color:var(--text2)"></span>
-        <button class="btn btn-ghost btn-sm" id="main-add-row-btn" onclick="addPfmeaRow()">+ Add Row</button>
+        
+        <div class="file-dropdown-wrap" style="display:flex;gap:0">
+          <button class="btn btn-primary btn-sm" onclick="exportCurrentXLSX()" style="border-radius:7px 0 0 7px;padding-right:12px">📊 Export Excel</button>
+          <button class="btn btn-primary btn-sm" onclick="toggleFileDropdown(event, 'file-dropdown-main')" style="border-radius:0 7px 7px 0;padding:5px 7px;border-left:1px solid rgba(255,255,255,0.2)">▾</button>
+          <div class="file-dropdown" id="file-dropdown-main">
+            <div class="add-dd-item" onclick="closeFileDropdown();exportCurrentXLSX()">
+              <div class="add-dd-icon" style="background:rgba(52,199,123,.15);">📊</div>
+              <div><div class="add-dd-label">Export as Excel</div><div class="add-dd-sub">Full PFMEA .xlsx with formatting</div></div>
+            </div>
+            <div class="add-dd-item" onclick="closeFileDropdown();exportJSON()">
+              <div class="add-dd-icon" style="background:rgba(79,126,248,.15);">💾</div>
+              <div><div class="add-dd-label">Export as JSON</div><div class="add-dd-sub">Save project backup</div></div>
+            </div>
+            <div class="add-dd-sep"></div>
+            <div class="add-dd-item" onclick="closeFileDropdown();importJSON()">
+              <div class="add-dd-icon" style="background:rgba(245,158,11,.15);">📂</div>
+              <div><div class="add-dd-label">Import JSON</div><div class="add-dd-sub">Load a saved project</div></div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
     <div class="pfmea-empty" id="pfmea-empty">
@@ -677,6 +685,126 @@ v3.7.5 Streamlined "connect from here" flow, start node automatically selected, 
       <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div> M — Medium (recommended)</div>
       <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div> L — Low (monitor)</div>
       <div style="margin-left:auto;font-size:11px;color:var(--text3)">* = after corrective actions</div>
+    </div>
+
+     <div id="library-view" style="display:none; flex:1; flex-direction:column; overflow-y:auto; padding:20px;">
+      
+      <div id="library-lock-screen" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:12px;">
+        <div style="font-size:32px;">🔒</div>
+        <div style="font-size:14px; font-weight:600;">Master Library Locked</div>
+        <div style="font-size:12px; color:var(--text2); text-align:center;">Enter the admin password to access<br>the standard failure mode database.</div>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <input type="password" id="lib-password" class="form-input" style="width:180px;" placeholder="Password" onkeydown="if(event.key==='Enter') unlockLibrary()">
+          <button class="btn btn-primary" onclick="unlockLibrary()">Unlock</button>
+        </div>
+      </div>
+
+      <div id="library-content" style="display:none; height:100%; flex-direction:column;">
+        
+        <div style="font-size:14px; font-weight:700; padding-bottom:12px; display:flex; align-items:center; gap:8px; flex-shrink:0;">
+          📚 Master PFMEA Library
+          <span style="font-size:10px; background:rgba(52,199,123,.2); color:var(--green); padding:2px 6px; border-radius:4px;">Unlocked</span>
+          <button class="btn btn-ghost btn-sm" style="margin-left:auto;">+ Add Master Row</button>
+        </div>
+        
+        <div class="table-wrap" style="flex:1; border:1px solid var(--border); border-radius:8px; padding:0; display:block;">
+          <table class="pfmea">
+            
+            <thead id="library-thead">
+              <tr>
+                <th rowspan="2" style="width:60px;min-width:60px;text-align:center;font-size:9px;vertical-align:bottom;padding:0 4px 6px;border-top:none;background:var(--bg3)">Lvl</th>
+                <th colspan="3" style="text-align:center;background:rgba(79,126,248,.12);color:var(--process)">STRUCTURE ANALYSIS (Step 2)</th>
+                <th colspan="3" style="text-align:center;background:rgba(52,199,123,.12);color:var(--sub)">FUNCTION ANALYSIS (Step 3)</th>
+                <th colspan="4" style="text-align:center;background:rgba(239,68,68,.12);color:var(--red)">FAILURE ANALYSIS (Step 4)</th>
+                <th colspan="5" style="text-align:center;background:rgba(245,158,11,.12);color:var(--amber)">RISK ANALYSIS (Step 5)</th>
+                <th colspan="12" style="text-align:center;background:rgba(124,92,246,.12);color:var(--comp)">OPTIMIZATION (Step 6)</th>
+                <th rowspan="2" style="width:28px;border-top:none;padding:0;background:var(--bg3)"></th>
+              </tr>
+              <tr>
+                <th class="th-with-tooltip" style="min-width:110px">
+                  <div class="tooltip-wrapper">
+                    <div class="th-info-btn">i</div>
+                    <div class="th-tooltip-box">
+                      System, Subsystem, Part Element of Name of Process
+                    </div>
+                  </div>
+                  <span>1. Process Item / System / Part</span>
+                </th>
+                <th class="th-with-tooltip" style="min-width:110px">2. Process Step Station No.<br>&amp; Name of Focus Element</th>
+                <th class="th-with-tooltip" style="min-width:110px">
+                  <div class="tooltip-wrapper">
+                    <div class="th-info-btn">i</div>
+                    <div class="th-tooltip-box">
+                      Man, Machine, Material (Indirect), Milieu (Environment), etc.
+                    </div>
+                  </div>
+                  <span>3. Process Work Element (4M) </span>
+                </th>
+                <th class="th-with-tooltip" style="min-width:110px">
+                  <div class="tooltip-wrapper">
+                    <div class="th-info-btn">i</div>
+                    <div class="th-tooltip-box">
+                      In-plant, Ship-to-Plant, Process Item, End user, when known
+                    </div>
+                  </div>
+                  <span>1. Function of Process Item</span>
+                </th>
+                <th class="th-with-tooltip" style="min-width:110px">
+                  <div class="tooltip-wrapper">
+                    <div class="th-info-btn">i</div>
+                    <div class="th-tooltip-box">
+                      Quantitative value is optional
+                    </div>
+                  </div>
+                  <span>2. Function of Process Step<br>&amp; Product Characteristic</span>
+                </th>
+                <th style="min-width:120px">3. Function of the<br>Process Work Element &amp;<br>Process Characteristic</th>
+                <th class="th-with-tooltip" style="min-width:110px">
+                  <div class="tooltip-wrapper">
+                    <div class="th-info-btn">i</div>
+                    <div class="th-tooltip-box">
+                      In-plant, Ship-to-Plant, Process Item, End user, when known
+                    </div>
+                  </div>
+                  <span>1. Failure Effects (FE)</span>
+                </th>
+                <th class="th-vert"><span>Severity (S) of FE</span></th>
+                <th style="min-width:130px">2. Failure Mode (FM)</th>
+                <th style="min-width:130px">3. Failure Cause (FC)</th>
+                <th style="min-width:120px">Prevention Control (PC) of FC</th>
+                <th class="th-vert"><span>Occurrence (O) of FC</span></th>
+                <th style="min-width:120px">Detection Control (DC) of FC or FM</th>
+                <th class="th-vert"><span>Detection (D) of FC / FM</span></th>
+                <th class="th-vert"><span>Action Priority (AP)</span></th>
+                <th class="th-vert" title="Special Product Characteristic"><span>Sp Prod Char</span></th>
+                <th style="min-width:130px">Prevention Action</th>
+                <th style="min-width:130px">Detection Action</th>
+                <th style="min-width:100px">Responsible Person</th>
+                <th style="min-width:80px">Target Date</th>
+                <th style="min-width:100px">Status</th>
+                <th style="min-width:120px">Action Taken &amp; Evidence</th>
+                <th style="min-width:100px">Completion Date</th>
+                <th class="th-vert"><span>Severity (S)*</span></th>
+                <th class="th-vert"><span>Occurrence (O)*</span></th>
+                <th class="th-vert"><span>Detection (D)*</span></th>
+                <th class="th-vert"><span>Action Priority (AP)*</span></th>
+              </tr>
+            </thead>
+
+            <tbody id="library-tbody">
+              <tr>
+                <td colspan="29" style="text-align:center; padding:60px 20px; color:var(--text3); font-size:13px; line-height:1.6;">
+                  <div style="font-size:24px; margin-bottom:8px;">📝</div>
+                  Your Master Library is empty.<br>Start adding standardized failure modes, causes, and severity scores here!
+                </td>
+              </tr>
+            </tbody>
+
+          </table>
+        </div>
+
+      </div>
+      
     </div>
   </div>
 </div>
@@ -844,21 +972,60 @@ function getUpstreamComponents(nodeId, visited = new Set()) {
 //  VIEW TOGGLE
 // ═══════════════════════════════════
 let _chartEverFit=false;
+let _libraryUnlocked = false; // Tracks if the user has entered the password
+
 function setView(v){
   currentView=v;
   document.getElementById('btn-list').classList.toggle('active',v==='list');
   document.getElementById('btn-chart').classList.toggle('active',v==='chart');
+  document.getElementById('btn-library').classList.toggle('active',v==='library');
+
+  // 1. Toggle Left Panel Views
   document.getElementById('list-view').style.display=v==='list'?'block':'none';
   document.getElementById('chart-view').style.display=v==='chart'?'flex':'none';
+  document.getElementById('library-left-panel').style.display=v==='library'?'block':'none';
   document.getElementById('add-dropdown-wrap').style.display=v==='list'?'':'none';
-  if(v==='list'){
-    closeDrawer();
-    updatePfmeaView();
+
+  // 2. Toggle Right Panel Views
+  if(v==='library'){
+    // Hide all standard project UI on the right
+    document.getElementById('pfmea-header').style.display = 'none';
+    document.getElementById('pfmea-empty').style.display = 'none';
+    document.getElementById('scope-wrap').style.display = 'none';
+    document.getElementById('table-wrap').style.display = 'none';
+    document.getElementById('pfmea-legend').style.display = 'none';
+    
+    // Show the Library takeover
+    document.getElementById('library-view').style.display = 'flex';
+  } else {
+    // Hide Library
+    document.getElementById('library-view').style.display = 'none';
+    
+    // Process standard view logic
+    if(v==='list') closeDrawer();
+    if(v==='chart'){
+      renderChart();
+      if(!_chartEverFit){ _chartEverFit=true; requestAnimationFrame(fitChart); }
+      else applyTransform();
+    }
+    
+    // Restore the correct standard table/empty state based on selection
+    updatePfmeaView(); 
   }
-  if(v==='chart'){
-    renderChart();
-    if(!_chartEverFit){ _chartEverFit=true; requestAnimationFrame(fitChart); }
-    else applyTransform();
+}
+
+function unlockLibrary() {
+  const pwdInput = document.getElementById('lib-password');
+  
+  // Change "admin" to whatever password you want to use
+  if (pwdInput.value === 'Pfmea@MXS2026') { 
+    _libraryUnlocked = true;
+    document.getElementById('library-lock-screen').style.display = 'none';
+    document.getElementById('library-content').style.display = 'block';
+  } else {
+    alert('Incorrect password. Please try again.');
+    pwdInput.value = '';
+    pwdInput.focus();
   }
 }
 
@@ -1864,14 +2031,16 @@ document.addEventListener('click', (e) => {
 // ═══════════════════════════════════
 //  DROPDOWNS
 // ═══════════════════════════════════
-function toggleFileDropdown(e){
+function toggleFileDropdown(e, dropdownId){
   e.stopPropagation();
-  const dd=document.getElementById('file-dropdown');
-  const open=dd.classList.contains('open');
+  const dd = document.getElementById(dropdownId);
+  const open = dd.classList.contains('open');
   closeAllDropdowns();
   if(!open) dd.classList.add('open');
 }
-function closeFileDropdown(){ document.getElementById('file-dropdown').classList.remove('open'); }
+function closeFileDropdown(){ 
+  document.querySelectorAll('.file-dropdown').forEach(el => el.classList.remove('open')); 
+}
 
 function toggleAddDropdown(e){
   e.stopPropagation();
@@ -2197,7 +2366,7 @@ function exportCurrentXLSX(){
     {label:'Level', col:0, bg:COL_HDR, vert:false},
     {label:'Name', col:1, bg:COL_HDR, vert:false},
     {label:'1. Process Item System, Subsystem, Part Element or Name of Process', col:2, bg:COL_STEP2L, vert:false},
-    {label:'2. Process Step Station No. and Name of Focus Element', col:3, bg:COL_STEP2L, vert:false},
+    {label:'2. Process Step Station No. & Name of Focus Element', col:3, bg:COL_STEP2L, vert:false},
     {label:'3. Process Work Element [Man, Machine, Material (Indirect), Milieu (Environment). etc.]', col:4, bg:COL_STEP2L, vert:false},
     {label:'1. Function of the Process Item [In-plant, Ship-to-plant, Process Item, End user, when known]', col:5, bg:COL_STEP3L, vert:false},
     {label:'2. Function of the Process Step and Product Characteristic (Quantitative value is optional)', col:6, bg:COL_STEP3L, vert:false},
