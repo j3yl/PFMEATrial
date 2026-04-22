@@ -1,9 +1,9 @@
 <!--
-v4.1.0 Failure rows only be added to processes, functionality removed for project and component level. Delete row button added. PFMEA table default view set to entire project, selecting process/components will display relevant processes.
+v4.1.2 Delete row function hidden
 
-v4.0.2 Fixed UI not appearing until failure row added, fuckass tooltip for chart view multi selection removed.
+v4.1.1 td colspan = 28 for cleaner UI
 
-v4.0.1 Relocated Export button, removed add row button from top banner
+v4.1.0 Failure rows only be added to processes, functionality removed for project and component level. PFMEA table default view set to entire project, selecting process/components will display relevant processes.
 -->
 
 <!DOCTYPE html>
@@ -794,7 +794,7 @@ v4.0.1 Relocated Export button, removed add row button from top banner
 
             <tbody id="library-tbody">
               <tr>
-                <td colspan="29" style="text-align:left; padding:60px 20px; color:var(--text3); font-size:13px; line-height:1.6;">
+                <td colspan="28" style="text-align:left; padding:60px 20px; color:var(--text3); font-size:13px; line-height:1.6;">
                   <div style="font-size:24px; margin-bottom:8px;">📝</div>
                   Your Master Library is empty.<br>Download the Excel Template to edit.
                 </td>
@@ -1862,7 +1862,7 @@ function renderPfmeaTable(){
     if(entry.nodeId!==lastNodeId){
       const m=LEVEL_META[entry.nodeType] || {depth: 0, color: '#aaa', label: 'Item'};
       const indent=m.depth*12;
-      html+=`<tr class="group-header"><td colspan="25" style="padding-left:${8+indent}px;border-left:3px solid ${m.color};background:${m.depth===0?'rgba(245,158,11,0.07)':m.depth===1?'rgba(79,126,248,0.07)':m.depth===2?'rgba(124,92,246,0.07)':'rgba(52,199,123,0.07)'};color:var(--text2);">`;
+      html+=`<tr class="group-header"><td colspan="28" style="padding-left:${8+indent}px;border-left:3px solid ${m.color};background:${m.depth===0?'rgba(245,158,11,0.07)':m.depth===1?'rgba(79,126,248,0.07)':m.depth===2?'rgba(124,92,246,0.07)':'rgba(52,199,123,0.07)'};color:var(--text2);">`;
       html+=`${esc(entry.nodeName)} <span style="opacity:.5;font-weight:400;font-size:9px;margin-left:4px">${m.label}</span></td></tr>`;
       lastNodeId=entry.nodeId;
     }
@@ -1880,7 +1880,7 @@ function renderPfmeaTable(){
             emptyMsg = "No processes are currently linked to this component.<br><span style='font-size:11px; opacity:0.6; font-weight:normal;'>Connect this component to a Process step in the Chart view to see its PFMEA data here.</span>";
         }
     }
-    html = `<tr><td colspan="25" style="text-align:left;padding:40px 24px;color:var(--text3);font-size:13px;line-height:1.6;">${emptyMsg}</td></tr>`;
+    html = `<tr><td colspan="28" style="text-align:left;padding:40px 24px;color:var(--text3);font-size:13px;line-height:1.6;">${emptyMsg}</td></tr>`;
   }
 
   const tbody = document.getElementById('pfmea-tbody');
@@ -2022,11 +2022,11 @@ function showRowCtx(e, rid) {
   m.style.top = e.clientY + 'px';
   m.style.zIndex = '1000';
   
-  const delItem = document.createElement('div');
-  delItem.className = 'fc-ctx-item danger';
-  delItem.innerHTML = '✕ Delete Row';
-  delItem.addEventListener('click', () => { closeRowCtx(); delRow(rid); });
-  m.appendChild(delItem);
+  // const delItem = document.createElement('div');
+  // delItem.className = 'fc-ctx-item danger';
+  // delItem.innerHTML = '✕ Delete Row';
+  // delItem.addEventListener('click', () => { closeRowCtx(); delRow(rid); });
+  // m.appendChild(delItem);
   
   document.body.appendChild(m);
   _rowCtx = m;
