@@ -1,9 +1,9 @@
 <!--
+v4.2.1 PRC tag removed from table 
+
 v4.2.0 Added working Excel Import/Export to Master PFMEA Library
 
 v4.1.2 Delete row function hidden
-
-v4.1.1 td colspan = 28 for cleaner UI
 -->
 
 <!DOCTYPE html>
@@ -1865,7 +1865,7 @@ function renderPfmeaTable(){
       const m=LEVEL_META[entry.nodeType] || {depth: 0, color: '#aaa', label: 'Item'};
       const indent=m.depth*12;
       html+=`<tr class="group-header"><td colspan="28" style="padding-left:${8+indent}px;border-left:3px solid ${m.color};background:${m.depth===0?'rgba(245,158,11,0.07)':m.depth===1?'rgba(79,126,248,0.07)':m.depth===2?'rgba(124,92,246,0.07)':'rgba(52,199,123,0.07)'};color:var(--text2);">`;
-      html+=`${esc(entry.nodeName)} <span style="opacity:.5;font-weight:400;font-size:9px;margin-left:4px">${m.label}</span></td></tr>`;
+      html+=`${esc(entry.nodeName)}</td></tr>`;
       lastNodeId=entry.nodeId;
     }
     html+=mkRow(entry.row, globalIdx, entry.nodeType, entry.nodeId);
