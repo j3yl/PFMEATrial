@@ -1,9 +1,9 @@
 <!--
+v4.1.0 Failure rows only be added to processes, functionality removed for project and component level. Delete row button added. PFMEA table default view set to entire project, selecting process/components will display relevant processes.
+
+v4.0.2 Fixed UI not appearing until failure row added, fuckass tooltip for chart view multi selection removed.
+
 v4.0.1 Relocated Export button, removed add row button from top banner
-
-v4.0.0 Added password-protected master PFMEA Library
-
-v3.7.8 tooltip position and animation change, excel formatting tidied up, sub-component removed from dropdown menu 
 -->
 
 <!DOCTYPE html>
@@ -373,15 +373,6 @@ v3.7.8 tooltip position and animation change, excel formatting tidied up, sub-co
         <button class="view-btn" id="btn-chart" onclick="setView('chart')">⬡ Chart</button>
         <button class="view-btn" id="btn-library" onclick="setView('library')">📚 Master</button>
       </div>
-      <div class="add-dropdown-wrap" id="add-dropdown-wrap">
-        <button class="btn btn-primary btn-sm" id="add-main-btn" onclick="toggleAddDropdown(event)">+ Add ▾</button>
-        <div class="add-dropdown" id="add-dropdown">
-          <div class="add-dd-item" onclick="closeAddDropdown();openAddModal('node',null)">
-            <div class="add-dd-icon" style="background:rgba(79,126,248,.15);">＋</div>
-            <div><div class="add-dd-label">Add Node</div><div class="add-dd-sub">Generic flowchart node</div></div>
-          </div>
-        </div>
-      </div>
     </div>
 
     <div id="list-view">
@@ -413,7 +404,7 @@ v3.7.8 tooltip position and animation change, excel formatting tidied up, sub-co
                 <div class="add-dd-icon" style="background:rgba(124,92,246,.15);">🔹</div>
                 <div><div class="add-dd-label">Component</div><div class="add-dd-sub">Add under a process</div></div>
               </div>
-              <div class="add-dd-item" style ="display:none"; onclick="closeAddDropdownChart();openAddModalSmart('sub')"> //REMOVE STYLE="DISPLAY:NONE" TO ENABLE SUB-COMPONENTS
+              <div class="add-dd-item" style="display:none"; onclick="closeAddDropdownChart();openAddModalSmart('sub')"> //REMOVE STYLE="DISPLAY:NONE" TO ENABLE SUB-COMPONENTS
                 <div class="add-dd-icon" style="background:rgba(52,199,123,.15);">▪</div>
                 <div><div class="add-dd-label">Sub-component</div><div class="add-dd-sub">Add under a component</div></div>
               </div>
@@ -435,7 +426,6 @@ v3.7.8 tooltip position and animation change, excel formatting tidied up, sub-co
               <div class="drawer-subtitle" id="drawer-subtitle">PFMEA Table</div>
             </div>
             <span id="drawer-rpn-summary" style="font-size:11px;color:var(--text2);margin-left:auto;margin-right:8px"></span>
-            <button class="btn btn-ghost btn-sm" onclick="addPfmeaRow()" style="margin-right:4px" id="drawer-add-row-btn">+ Row</button>
             <button class="drawer-close" onclick="closeDrawer()" title="Close">✕</button>
           </div>
           <div class="drawer-body">
@@ -443,7 +433,6 @@ v3.7.8 tooltip position and animation change, excel formatting tidied up, sub-co
               <table class="pfmea" id="drawer-pfmea-table">
                 <thead>
                   <tr>
-                    <th rowspan="2" style="width:60px;min-width:60px;text-align:center;font-size:9px;vertical-align:bottom;padding:0 4px 6px;border-top:none;background:var(--bg3)">Lvl</th>
                     <th colspan="3" style="text-align:center;background:rgba(79,126,248,.12);color:var(--process)">STRUCTURE ANALYSIS (Step 2)</th>
                     <th colspan="3" style="text-align:center;background:rgba(52,199,123,.12);color:var(--sub)">FUNCTION ANALYSIS (Step 3)</th>
                     <th colspan="4" style="text-align:center;background:rgba(239,68,68,.12);color:var(--red)">FAILURE ANALYSIS (Step 4)</th>
@@ -556,7 +545,6 @@ v3.7.8 tooltip position and animation change, excel formatting tidied up, sub-co
       <div class="pfmea-empty-icon">📋</div>
       <div class="pfmea-empty-text">
         Select any node from the left panel<br>to view or edit its PFMEA table.<br>
-        <span style="font-size:12px;color:var(--text3)">In Chart view, left-drag to select multiple nodes.</span>
       </div>
     </div>
     <div class="scope-wrap" id="scope-wrap">
@@ -597,7 +585,6 @@ v3.7.8 tooltip position and animation change, excel formatting tidied up, sub-co
       <table class="pfmea">
         <thead>
           <tr>
-            <th rowspan="2" style="width:60px;min-width:60px;text-align:center;font-size:9px;vertical-align:bottom;padding:0 4px 6px;border-top:none;background:var(--bg3)">Lvl</th>
             <th colspan="3" style="text-align:center;background:rgba(79,126,248,.12);color:var(--process)">STRUCTURE ANALYSIS (Step 2)</th>
             <th colspan="3" style="text-align:center;background:rgba(52,199,123,.12);color:var(--sub)">FUNCTION ANALYSIS (Step 3)</th>
             <th colspan="4" style="text-align:center;background:rgba(239,68,68,.12);color:var(--red)">FAILURE ANALYSIS (Step 4)</th>
@@ -704,7 +691,22 @@ v3.7.8 tooltip position and animation change, excel formatting tidied up, sub-co
         <div style="font-size:14px; font-weight:700; padding-bottom:12px; display:flex; align-items:center; gap:8px; flex-shrink:0;">
           📚 Master PFMEA Library
           <span style="font-size:10px; background:rgba(52,199,123,.2); color:var(--green); padding:2px 6px; border-radius:4px;">Unlocked</span>
-          <button class="btn btn-ghost btn-sm" style="margin-left:auto;">+ Add Master Row</button>
+          <div class="file-dropdown-wrap" style="margin-left:auto; display:flex; gap:0">
+            <button class="btn btn-primary btn-sm" onclick="exportMasterXLSX()" style="border-radius:7px 0 0 7px; padding-right:12px">📊 Export Excel</button>
+            <button class="btn btn-primary btn-sm" onclick="toggleFileDropdown(event, 'file-dropdown-library')" style="border-radius:0 7px 7px 0; padding:5px 7px; border-left:1px solid rgba(255,255,255,0.2)">▾</button>
+            
+            <div class="file-dropdown" id="file-dropdown-library">
+              <div class="add-dd-item" onclick="closeFileDropdown();exportMasterXLSX()">
+                <div class="add-dd-icon" style="background:rgba(52,199,123,.15);">📊</div>
+                <div><div class="add-dd-label">Export as Excel</div><div class="add-dd-sub">Download Master Library</div></div>
+              </div>
+              <div class="add-dd-sep"></div>
+              <div class="add-dd-item" onclick="closeFileDropdown();importMasterExcel()">
+                <div class="add-dd-icon" style="background:rgba(245,158,11,.15);">📂</div>
+                <div><div class="add-dd-label">Import from Excel</div><div class="add-dd-sub">Load standardized data</div></div>
+              </div>
+            </div>
+          </div>
         </div>
         
         <div class="table-wrap" style="flex:1; border:1px solid var(--border); border-radius:8px; padding:0; display:block;">
@@ -712,7 +714,6 @@ v3.7.8 tooltip position and animation change, excel formatting tidied up, sub-co
             
             <thead id="library-thead">
               <tr>
-                <th rowspan="2" style="width:60px;min-width:60px;text-align:center;font-size:9px;vertical-align:bottom;padding:0 4px 6px;border-top:none;background:var(--bg3)">Lvl</th>
                 <th colspan="3" style="text-align:center;background:rgba(79,126,248,.12);color:var(--process)">STRUCTURE ANALYSIS (Step 2)</th>
                 <th colspan="3" style="text-align:center;background:rgba(52,199,123,.12);color:var(--sub)">FUNCTION ANALYSIS (Step 3)</th>
                 <th colspan="4" style="text-align:center;background:rgba(239,68,68,.12);color:var(--red)">FAILURE ANALYSIS (Step 4)</th>
@@ -793,9 +794,9 @@ v3.7.8 tooltip position and animation change, excel formatting tidied up, sub-co
 
             <tbody id="library-tbody">
               <tr>
-                <td colspan="29" style="text-align:center; padding:60px 20px; color:var(--text3); font-size:13px; line-height:1.6;">
+                <td colspan="29" style="text-align:left; padding:60px 20px; color:var(--text3); font-size:13px; line-height:1.6;">
                   <div style="font-size:24px; margin-bottom:8px;">📝</div>
-                  Your Master Library is empty.<br>Start adding standardized failure modes, causes, and severity scores here!
+                  Your Master Library is empty.<br>Download the Excel Template to edit.
                 </td>
               </tr>
             </tbody>
@@ -972,7 +973,6 @@ function getUpstreamComponents(nodeId, visited = new Set()) {
 //  VIEW TOGGLE
 // ═══════════════════════════════════
 let _chartEverFit=false;
-let _libraryUnlocked = false; // Tracks if the user has entered the password
 
 function setView(v){
   currentView=v;
@@ -984,7 +984,6 @@ function setView(v){
   document.getElementById('list-view').style.display=v==='list'?'block':'none';
   document.getElementById('chart-view').style.display=v==='chart'?'flex':'none';
   document.getElementById('library-left-panel').style.display=v==='library'?'block':'none';
-  document.getElementById('add-dropdown-wrap').style.display=v==='list'?'':'none';
 
   // 2. Toggle Right Panel Views
   if(v==='library'){
@@ -1315,16 +1314,31 @@ function updateSelectionVisuals() {
 }
 
 function updatePfmeaView() {
-   if(selectedNodes.length === 0) {
-       showPfmeaUI(state.project, 'Project', state.project.name);
-   } else if (selectedNodes.length === 1) {
-       const res = findNode(selectedNodes[0]);
-       if(res) showPfmeaUI(res.node, res.type, res.node.name);
-   } else {
-       showPfmeaUI(null, 'Multiple', `${selectedNodes.length} Nodes Selected`);
-   }
-}
+  if(selectedNodes.length === 0) {
+    showPfmeaUI(state.project, 'Project', state.project.name);
+  } else if (selectedNodes.length === 1) {
+    const res = findNode(selectedNodes[0]);
+    if(res) showPfmeaUI(res.node, res.type, res.node.name);
+  } else {
+    // --- NEW CHECK: Are these multiple nodes just a grouped process? ---
+    let isGroup = true;
+    let firstName = '';
+    for (let i = 0; i < selectedNodes.length; i++) {
+      const n = findNode(selectedNodes[i])?.node;
+      if (!n || n.type !== 'process') { isGroup = false; break; }
+      if (i === 0) firstName = n.name;
+      else if (n.name !== firstName) { isGroup = false; break; }
+    }
 
+    if (isGroup) {
+      // It is a grouped process (e.g. 2 "Singulation" nodes). Show the name and allow edits!
+      showPfmeaUI({type: 'process', isGroup: true}, 'Process Group', firstName);
+    } else {
+      // Standard multi-selection of different nodes
+      showPfmeaUI(null, 'Multiple', `${selectedNodes.length} Nodes Selected`);
+    }
+  }
+}
 // ═══════════════════════════════════
 //  CHART VIEW
 // ═══════════════════════════════════
@@ -1744,39 +1758,32 @@ function deleteNodeGroup(idsString) {
   saveState();
 }
 
-function showPfmeaUI(node,typeLabel,name){
-  if(currentView==='chart'){
-    document.getElementById('pfmea-title').textContent=name;
-    document.getElementById('pfmea-subtitle').textContent=`${typeLabel} · PFMEA (cumulative)`;
-    document.getElementById('pfmea-header').style.display='flex';
-    document.getElementById('pfmea-legend').style.display='flex';
-    document.getElementById('scope-wrap').style.display='block';
-    document.getElementById('pfmea-empty').style.display='none';
-    document.getElementById('table-wrap').style.display='block';
-    
-    document.getElementById('main-add-row-btn').style.display = selectedNodes.length > 1 ? 'none' : 'block';
-    document.getElementById('drawer-add-row-btn').style.display = selectedNodes.length > 1 ? 'none' : 'block';
-    document.getElementById('main-add-row-btn-bottom').style.display = selectedNodes.length > 1 ? 'none' : 'block';
-    document.getElementById('drawer-add-row-btn-bottom').style.display = selectedNodes.length > 1 ? 'none' : 'block';
+function showPfmeaUI(node, typeLabel, name) {
+  document.getElementById('pfmea-empty').style.display = 'none';
+  document.getElementById('table-wrap').style.display = 'block';
+  document.getElementById('pfmea-header').style.display = 'flex';
+  document.getElementById('pfmea-legend').style.display = 'flex';
+  document.getElementById('scope-wrap').style.display = 'block';
+  
+  document.getElementById('pfmea-title').textContent = name;
+  document.getElementById('pfmea-subtitle').textContent = `${typeLabel} · PFMEA (cumulative)`;
 
-    renderPfmeaTable();
-    populateScopeHeader();
-  } else {
-    document.getElementById('pfmea-empty').style.display='none';
-    document.getElementById('table-wrap').style.display='block';
-    document.getElementById('pfmea-header').style.display='flex';
-    document.getElementById('pfmea-legend').style.display='flex';
-    document.getElementById('scope-wrap').style.display='block';
-    document.getElementById('pfmea-title').textContent=name;
-    document.getElementById('pfmea-subtitle').textContent=`${typeLabel} · PFMEA (cumulative)`;
-    
-    document.getElementById('main-add-row-btn').style.display = selectedNodes.length > 1 ? 'none' : 'block';
-    document.getElementById('main-add-row-btn-bottom').style.display = selectedNodes.length > 1 ? 'none' : 'block';
-    
-    populateScopeHeader();
-    renderPfmeaTable();
+  // --- STRICT PROCESS-ONLY BUTTON LOGIC ---
+  let canAddRow = false;
+  // Only allow adding rows if exactly one item (or a Process Group) is selected, AND it is a Process
+  if (selectedNodes.length === 1 || (node && node.isGroup)) {
+    canAddRow = (node && node.type === 'process');
   }
+
+  document.getElementById('main-add-row-btn-bottom').style.display = canAddRow ? 'block' : 'none';
+  if(document.getElementById('drawer-add-row-btn-bottom')) {
+      document.getElementById('drawer-add-row-btn-bottom').style.display = canAddRow ? 'block' : 'none';
+  }
+
+  populateScopeHeader();
+  renderPfmeaTable();
 }
+
 function closeDrawer(){
   document.getElementById('chart-pfmea-drawer').classList.remove('open');
 }
@@ -1794,73 +1801,68 @@ const LEVEL_META = {
 
 function collectRows() {
   const entries = [];
-  const seenNodes = new Set();
-
-  /**
-   * Helper to add a node and its entire downstream branch to the table.
-   */
-  function addChain(node) {
-    if (!node || seenNodes.has(node.id)) return;
-    seenNodes.add(node.id);
-
-    // 1. Add this node's own PFMEA rows
-    const rows = node.pfmea || [];
-    rows.forEach(row => {
-      entries.push({
-        row,
-        nodeRef: node,
-        nodeId: node.id === state.project.id ? '__project__' : node.id,
-        nodeName: node.name || '',
-        nodeType: node.type || (node.id === state.project.id ? 'project' : 'node')
-      });
-    });
-
-    // 2. Recursively add everything this node connects to (downstream)
-    (node.connections || []).forEach(cid => {
-      const downstreamNode = state.nodes.find(n => n.id === cid);
-      if (downstreamNode) addChain(downstreamNode);
-    });
-  }
-
-  // --- Logic Branching ---
+  let targetProcessIds = new Set();
   
-  // Scenario A: Nothing selected -> Show the entire project data
-  if (selectedNodes.length === 0) {
-    addChain(state.project);
-    state.nodes.forEach(n => addChain(n));
+  // Scenario A: Nothing selected (Project level) -> Show ALL processes
+  if (selectedNodes.length === 0 || selectedNodes[0] === 'project' || (state.project && selectedNodes[0] === state.project.id)) {
+    state.nodes.filter(n => n.type === 'process').forEach(n => targetProcessIds.add(n.id));
   } 
-  // Scenario B: Specific nodes selected -> Show selected + recursive ancestors
+  // Scenario B: Specific nodes selected
   else {
-    // Collect all upstream components for the entire selection first
-    const upstreamComps = new Set();
-    selectedNodes.forEach(id => {
-      getUpstreamComponents(id).forEach(c => upstreamComps.add(c));
-    });
-
-    // Add upstream components first so they appear at the top of the table
-    upstreamComps.forEach(comp => addChain(comp));
-
-    // Then add the selected nodes themselves and their downstream branches
-    selectedNodes.forEach(id => {
-      const target = state.nodes.find(n => n.id === id);
-      if (target) addChain(target);
+    selectedNodes.forEach(selId => {
+      const nodeObj = state.nodes.find(n => n.id === selId);
+      if (nodeObj) {
+        if (nodeObj.type === 'process') {
+          // Exactly this process
+          targetProcessIds.add(nodeObj.id);
+        } else if (nodeObj.type === 'comp' || nodeObj.type === 'sub') {
+          // Adjacent inputs/outputs for this component
+          state.nodes.forEach(n => {
+            if (n.type === 'process' && n.connections && n.connections.includes(selId)) targetProcessIds.add(n.id);
+          });
+          if (nodeObj.connections) {
+            nodeObj.connections.forEach(targetId => {
+              const targetNode = state.nodes.find(n => n.id === targetId);
+              if (targetNode && targetNode.type === 'process') targetProcessIds.add(targetNode.id);
+            });
+          }
+        }
+      }
     });
   }
 
+  // Build the array
+  state.nodes.forEach(node => {
+    if (targetProcessIds.has(node.id) && node.pfmea && node.pfmea.length > 0) {
+      node.pfmea.forEach(row => {
+        entries.push({
+          nodeId: node.id,
+          nodeName: node.sublabel ? `${node.name} (${node.sublabel})` : node.name,
+          nodeType: node.type,
+          row: row,
+          nodeRef: node // Required for the delete row function to work
+        });
+      });
+    }
+  });
+  
   return entries;
 }
 
 function renderPfmeaTable(){
-  const entries=collectRows();
+  // 1. Both views now use the exact same smart filter!
+  const entries = collectRows(); 
 
+  // 2. HTML RENDERING
   let html='';
   let lastNodeId=null;
   let globalIdx=0;
+  
   entries.forEach(entry=>{
     if(entry.nodeId!==lastNodeId){
-      const m=LEVEL_META[entry.nodeType];
+      const m=LEVEL_META[entry.nodeType] || {depth: 0, color: '#aaa', label: 'Item'};
       const indent=m.depth*12;
-      html+=`<tr class="group-header"><td colspan="26" style="padding-left:${8+indent}px;border-left:3px solid ${m.color};background:${m.depth===0?'rgba(245,158,11,0.07)':m.depth===1?'rgba(79,126,248,0.07)':m.depth===2?'rgba(124,92,246,0.07)':'rgba(52,199,123,0.07)'};color:var(--text2);">`;
+      html+=`<tr class="group-header"><td colspan="25" style="padding-left:${8+indent}px;border-left:3px solid ${m.color};background:${m.depth===0?'rgba(245,158,11,0.07)':m.depth===1?'rgba(79,126,248,0.07)':m.depth===2?'rgba(124,92,246,0.07)':'rgba(52,199,123,0.07)'};color:var(--text2);">`;
       html+=`${esc(entry.nodeName)} <span style="opacity:.5;font-weight:400;font-size:9px;margin-left:4px">${m.label}</span></td></tr>`;
       lastNodeId=entry.nodeId;
     }
@@ -1868,12 +1870,26 @@ function renderPfmeaTable(){
     globalIdx++;
   });
 
-  if(!html) html=`<tr><td colspan="26" style="text-align:center;padding:24px;color:var(--text3);font-size:12px;">No PFMEA rows yet. Click <strong>+ Add Row</strong> to begin.</td></tr>`;
+  // Dynamic Empty State Messages
+  if(!html) {
+    let emptyMsg = "No PFMEA rows yet. Click <strong>+ Add Failure Mode Row</strong> to begin.";
+    
+    if (selectedNodes.length > 0) {
+        const selNode = state.nodes.find(n => n.id === selectedNodes[0]);
+        if (selNode && (selNode.type === 'comp' || selNode.type === 'sub')) {
+            emptyMsg = "No processes are currently linked to this component.<br><span style='font-size:11px; opacity:0.6; font-weight:normal;'>Connect this component to a Process step in the Chart view to see its PFMEA data here.</span>";
+        }
+    }
+    html = `<tr><td colspan="25" style="text-align:left;padding:40px 24px;color:var(--text3);font-size:13px;line-height:1.6;">${emptyMsg}</td></tr>`;
+  }
 
-  document.getElementById('pfmea-tbody').innerHTML=html;
-  const mainTbody=document.getElementById('pfmea-tbody-main');
+  const tbody = document.getElementById('pfmea-tbody');
+  if(tbody) tbody.innerHTML=html;
+  
+  const mainTbody = document.getElementById('pfmea-tbody-main');
   if(mainTbody) mainTbody.innerHTML=html;
-  updSummaryFromEntries(entries);
+  
+  if(typeof updSummaryFromEntries === 'function') updSummaryFromEntries(entries);
 }
 
 function mkRow(row,i,nodeType,sourceNodeId){
@@ -1881,13 +1897,8 @@ function mkRow(row,i,nodeType,sourceNodeId){
   const apc=apClass(ap), apc2=apClass(ap2);
   const trCls=ap==='H'?'rpn-high':ap==='M'?'rpn-med':'';
   const id=row.id;
-  const m=LEVEL_META[nodeType||'process'];
-  const indent=m.depth*14;
-  const dotCell=`<td class="level-cell" data-src="${sourceNodeId||''}">
-    <div class="level-dot-wrap" style="justify-content:flex-start;padding-left:${4+indent}px;"><div class="level-dot" style="background:${m.color}"></div></div>
-  </td>`;
-  return `<tr class="${trCls}" data-rid="${id}" data-src-node="${sourceNodeId||''}">
-    ${dotCell}
+  
+  return `<tr class="${trCls}" data-rid="${id}" data-src-node="${sourceNodeId||''}" oncontextmenu="showRowCtx(event, '${id}')">
     <td><textarea class="cell-input" rows="2" oninput="updCell('${id}','processItem',this.value)">${esc(row.processItem||'')}</textarea></td>
     <td><textarea class="cell-input" rows="2" oninput="updCell('${id}','processStep',this.value)">${esc(row.processStep||'')}</textarea></td>
     <td><textarea class="cell-input" rows="2" oninput="updCell('${id}','workElement',this.value)">${esc(row.workElement||'')}</textarea></td>
@@ -1972,9 +1983,14 @@ function updCell(rid,field,val){
 }
 
 function addPfmeaRow(){
-  if(selectedNodes.length !== 1 && selectedNodes.length !== 0) return;
-  const node = selectedNodes.length === 0 ? state.project : findNode(selectedNodes[0]).node;
-  if(!node) return;
+  // Prevent adding rows to the Project root (when nothing is selected)
+  if (selectedNodes.length === 0) return; 
+  
+  // Find the selected node (if it's a group, grab the first instance)
+  let node = state.nodes.find(n => n.id === selectedNodes[0]);
+  
+  // STRICT SAFETY CHECK: Abort if the target isn't a Process
+  if(!node || node.type !== 'process') return;
   
   node.pfmea.push({id:genId(),processItem:'',processStep:'',workElement:'',fnItem:'',fnStep:'',fnWork:'',failEffect:'',sev:'',failMode:'',failCause:'',prevCtrl:'',occ:'',detCtrl:'',det:'',spProdChar:'',prevAction:'',detAction:'',resp:'',date:'',status:'',taken:'',completionDate:'',sev2:'',occ2:'',det2:''});
   renderPfmeaTable(); saveState();
@@ -1988,6 +2004,45 @@ function delRow(rid){
   if(!entry) return;
   entry.nodeRef.pfmea=entry.nodeRef.pfmea.filter(r=>r.id!==rid);
   renderPfmeaTable(); saveState();
+}
+
+let _rowCtx = null;
+
+function showRowCtx(e, rid) {
+  // Do not block standard copy/paste menus inside inputs!
+  if (['TEXTAREA', 'INPUT', 'SELECT'].includes(e.target.tagName)) return;
+  
+  e.preventDefault();
+  if (typeof closeCtx === 'function') closeCtx(); // Close node menus
+  closeRowCtx();
+  
+  const m = document.createElement('div');
+  m.className = 'fc-ctx'; // Reuses your sleek flowchart menu styling
+  m.style.left = e.clientX + 'px';
+  m.style.top = e.clientY + 'px';
+  m.style.zIndex = '1000';
+  
+  const delItem = document.createElement('div');
+  delItem.className = 'fc-ctx-item danger';
+  delItem.innerHTML = '✕ Delete Row';
+  delItem.addEventListener('click', () => { closeRowCtx(); delRow(rid); });
+  m.appendChild(delItem);
+  
+  document.body.appendChild(m);
+  _rowCtx = m;
+  
+  // Keep menu on screen if near edges
+  requestAnimationFrame(() => {
+    const r = m.getBoundingClientRect();
+    if(r.right > window.innerWidth) m.style.left = (e.clientX - r.width) + 'px';
+    if(r.bottom > window.innerHeight) m.style.top = (e.clientY - r.height) + 'px';
+  });
+  
+  setTimeout(() => document.addEventListener('click', closeRowCtx, {once:true}), 10);
+}
+
+function closeRowCtx() { 
+  if(_rowCtx){ _rowCtx.remove(); _rowCtx = null; } 
 }
 
 function toggleTooltip(e) {
@@ -2042,9 +2097,9 @@ function closeFileDropdown(){
   document.querySelectorAll('.file-dropdown').forEach(el => el.classList.remove('open')); 
 }
 
-function toggleAddDropdown(e){
+function toggleAddDropdownChart(e){
   e.stopPropagation();
-  const dd=document.getElementById('add-dropdown');
+  const dd=document.getElementById('add-dropdown-chart');
   const open=dd.classList.contains('open');
   closeAllDropdowns();
   if(!open) dd.classList.add('open');
@@ -2056,9 +2111,14 @@ function toggleAddDropdownChart(e){
   closeAllDropdowns();
   if(!open) dd.classList.add('open');
 }
-function closeAddDropdown(){ document.getElementById('add-dropdown').classList.remove('open'); }
-function closeAddDropdownChart(){ document.getElementById('add-dropdown-chart').classList.remove('open'); }
-function closeAllDropdowns(){ closeAddDropdown(); closeAddDropdownChart(); closeFileDropdown(); }
+function closeAddDropdownChart(){ 
+  const dd = document.getElementById('add-dropdown-chart');
+  if(dd) dd.classList.remove('open'); 
+}
+function closeAllDropdowns(){ 
+  closeAddDropdownChart(); 
+  closeFileDropdown(); 
+}
 document.addEventListener('click', closeAllDropdowns);
 
 function openAddModalSmart(type){ openAddModal(type, null); }
@@ -2258,9 +2318,11 @@ function clearAll(){
   document.getElementById('table-wrap').style.display='none';
   document.getElementById('pfmea-header').style.display='none';
   document.getElementById('pfmea-legend').style.display='none';
+  updatePfmeaView();
   renderTree();
   if(currentView==='chart') renderChart();
   saveState();
+  
 }
 
 // ═══════════════════════════════════
@@ -2465,6 +2527,36 @@ function exportCurrentXLSX(){
   XLSX.writeFile(wb, fname+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
 
+function exportMasterXLSX() {
+  if(typeof XLSX === 'undefined'){ alert('Excel library not loaded yet.'); return; }
+  
+  // 1. Future state: Fetch from your Master Library database here
+  const masterData = []; 
+  
+  // 2. Generate a completely separate Excel format for the Master Library
+  const wb = XLSX.utils.book_new();
+  
+  if (masterData.length === 0) {
+     // If the database is currently empty, export a blank structural template
+     const ws = XLSX.utils.aoa_to_sheet([
+         ["MASTER PFMEA LIBRARY"],
+         [], // Blank row
+         ["Process Step", "Failure Mode", "Failure Cause", "Default Severity", "Standard Prevention Control", "Standard Detection Control"]
+     ]);
+     
+     // Make the column widths look nice
+     ws['!cols'] = [{wch:25}, {wch:35}, {wch:35}, {wch:15}, {wch:35}, {wch:35}];
+     
+     XLSX.utils.book_append_sheet(wb, ws, "Master Database");
+  } else {
+     // Your future loop to build the full data rows will go here!
+  }
+  
+  // 3. Save with the dedicated naming convention
+  const dateStr = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `Master_PFMEA_Library_${dateStr}.xlsx`);
+}
+
 function loadFile(e){
   const f=e.target.files[0]; if(!f) return;
   const r=new FileReader();
@@ -2478,6 +2570,7 @@ function loadFile(e){
       document.getElementById('table-wrap').style.display='none';
       document.getElementById('pfmea-header').style.display='none';
       document.getElementById('pfmea-legend').style.display='none';
+      updatePfmeaView();
       renderTree();
       if(currentView==='chart') renderChart();
       saveState();
@@ -2587,6 +2680,7 @@ async function loadState(){
     setSyncStatus('error');
   }
   renderTree();
+  updatePfmeaView();
 }
 
 function setSyncStatus(s){
@@ -2693,7 +2787,10 @@ window.addEventListener('mouseup', () => {
   }
 });
 
-document.addEventListener('contextmenu',e=>{ if(!e.target.closest('.fc-node')) closeCtx(); });
+document.addEventListener('contextmenu', e => { 
+  if(!e.target.closest('.fc-node') && typeof closeCtx === 'function') closeCtx(); 
+  if(!e.target.closest('tr[data-rid]') && typeof closeRowCtx === 'function') closeRowCtx(); 
+});
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
