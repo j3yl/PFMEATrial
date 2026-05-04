@@ -1,5 +1,5 @@
 <!--
-v5.0.3 Bugfix: Global #3
+v5.0.4 Bugfix: Global #4
 
 v5.0.0 Added Global functionality to master PFMEA library
 
@@ -3145,10 +3145,13 @@ async function pushGlobalMasterLibrary() {
   try {
     const payload = { id: 1, data: state.masterLibrary, updated_at: new Date().toISOString() };
     
-    // Use PATCH to simply overwrite Row 1
-    const r = await fetch(`${SB_URL}/rest/v1/global_master_library?id=eq.1`, {
-      method: 'PATCH',
-      headers: SB_HEADERS,
+    // Use POST with merge-duplicates (Upsert) to forcefully create the row if missing!
+    const r = await fetch(`${SB_URL}/rest/v1/global_master_library?on_conflict=id`, {
+      method: 'POST',
+      headers: {
+        ...SB_HEADERS,
+        'Prefer': 'return=representation, resolution=merge-duplicates'
+      },
       body: JSON.stringify(payload)
     });
     
