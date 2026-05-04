@@ -1,5 +1,5 @@
 <!--
-v5.0.7 Bugfix: Global #7
+v5.0.8 Bugfix: Global #8
 
 v5.0.0 Added Global functionality to master PFMEA library
 
@@ -2666,21 +2666,21 @@ function exportCurrentXLSX(){
 }
 
 // 1. Triggers the hidden file input when the dropdown button is clicked
-// 1. Triggers the hidden file input when the dropdown button is clicked
 function importMasterExcel() {
+  alert("STEP 1: Dropdown button clicked! Opening file picker...");
   const fileInput = document.getElementById('excel-file-input');
-  fileInput.value = ''; // <--- THIS CLEARS IT! Forces the browser to recognize the file.
+  fileInput.value = ''; // Force clear the input to bypass the "Same File" trap
   fileInput.click();
 }
 
 // 2. Reads and parses the Excel file once the user selects it
 function loadMasterExcel(e) {
-  alert("1. Import button clicked!"); // <--- ADD THIS
+  alert("STEP 2: File successfully selected! Reading data...");
   
   const f = e.target.files[0]; 
   if(!f) {
-     alert("No file was selected!"); // <--- ADD THIS
-     return; 
+     alert("Error: No file was detected.");
+     return;
   }
   
   const reader = new FileReader();
@@ -2691,20 +2691,13 @@ function loadMasterExcel(e) {
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const excelRows = XLSX.utils.sheet_to_json(worksheet, {header: 1}); 
 
-      // 1. Ensure the master library memory array exists
       if(!state.masterLibrary) state.masterLibrary = [];
-      
-      // 2. Clear the old library data to make room for the new import
       state.masterLibrary = []; 
 
-      // 3. Loop through the Excel rows (Skipping indices 0, 1, and 2 because they are headers)
-      for(let i = 3; i < excelRows.length; i++) {
+      for(let i = 4; i < excelRows.length; i++) {
          const r = excelRows[i];
-         
-         // Skip entirely blank rows
          if(!r || r.length === 0 || !r[0]) continue;
 
-         // Map the 28 columns from Excel into JavaScript data
          state.masterLibrary.push({
             id: genId(),
             processName: r[0] || '',
@@ -2737,18 +2730,19 @@ function loadMasterExcel(e) {
       }
 
       saveState();
-      renderMasterLibrary(); // Force the screen to update
-      pushGlobalMasterLibrary(); // Make the new library available for the dropdowns
-      alert(`Successfully imported ${state.masterLibrary.length} standardized rows into the Master Library!`);
+      renderMasterLibrary(); 
+      alert(`STEP 3: Read ${state.masterLibrary.length} rows from Excel. Sending to Supabase...`);
+      
+      // Trigger the cloud save!
+      pushGlobalMasterLibrary(); 
 
     } catch (err) {
       console.error(err);
-      alert('Error reading Excel file. Make sure it is a valid .xlsx file exported from this app.');
+      alert('Error reading Excel file. Make sure it is a valid .xlsx file.');
     }
   };
   
   reader.readAsArrayBuffer(f); 
-  e.target.value = ''; 
 }
 
 function renderMasterLibrary() {
@@ -3148,16 +3142,12 @@ async function fetchGlobalMasterLibrary() {
   }
 }
 
-// 2. Overwrite the global library when an admin uploads a new Excel file
+// 3. Overwrite the global library when an admin uploads a new Excel file
 async function pushGlobalMasterLibrary() {
   setSyncStatus('saving');
   try {
-    // For a PATCH, we only send the columns we want to change
     const payload = { data: state.masterLibrary, updated_at: new Date().toISOString() };
     
-    console.log("1. Sending payload to Supabase! Number of rows:", state.masterLibrary.length);
-
-    // Explicitly targeting id=1
     const r = await fetch(`${SB_URL}/rest/v1/global_master_library?id=eq.1`, {
       method: 'PATCH',
       headers: {
@@ -3167,21 +3157,17 @@ async function pushGlobalMasterLibrary() {
       body: JSON.stringify(payload)
     });
     
-    // Grab the actual response body from the database
     const responseData = await r.json(); 
-    console.log("2. Supabase replied with:", responseData);
 
-    // If it threw a hard error (like a 400 or 500)
     if(!r.ok) {
-      alert("HARD ERROR from Supabase:\n" + JSON.stringify(responseData, null, 2)); 
+      alert("STEP 4 (FAILED): HARD ERROR from Supabase:\n" + JSON.stringify(responseData, null, 2)); 
       throw new Error("Supabase error");
     }
     
-    // THE SILENT FAILURE CHECK
     if (responseData.length === 0) {
-        alert("SILENT FAILURE DETECTED!\n\nSupabase received the data perfectly, but it matched 0 rows. This means either:\n1. It doesn't recognize id=1.\n2. Your 'anon' API key does not have UPDATE permissions for this table.");
+        alert("STEP 4 (FAILED): SILENT FAILURE! Supabase received the data, but updated 0 rows. (Row ID 1 missing or permissions issue).");
     } else {
-        console.log("SUCCESS! The database saved the row.");
+        alert("STEP 4 (SUCCESS!): The cloud database accepted and saved your Master Library.");
         setSyncStatus('saved');
     }
     
