@@ -1,5 +1,5 @@
 <!--
-v5.0.2 Bugfix: Global #2
+v5.0.3 Bugfix: Global #3
 
 v5.0.0 Added Global functionality to master PFMEA library
 
@@ -2747,8 +2747,8 @@ function renderMasterLibrary() {
    const tbody = document.getElementById('library-tbody');
    if(!tbody) return;
 
-   // If there is no data, show the empty state message
-   if(!state.masterLibrary || state.masterLibrary.length === 0) {
+   // If there is no data OR if it somehow isn't an array, show the empty state message
+   if(!state.masterLibrary || !Array.isArray(state.masterLibrary) || state.masterLibrary.length === 0) {
       tbody.innerHTML = `<tr>
         <td colspan="28" style="text-align:left; padding:60px 20px; color:var(--text3); font-size:13px; line-height:1.6;">
           <div style="font-size:24px; margin-bottom:8px;">📝</div>
@@ -3123,12 +3123,15 @@ function setSyncStatus(s){
 // 1. Fetch the library for ALL users when they open the app
 async function fetchGlobalMasterLibrary() {
   try {
-    // We hardcode id=1 so EVERY user is looking at the exact same row in the database
     const r = await fetch(`${SB_URL}/rest/v1/global_master_library?id=eq.1&select=*`, { headers: SB_HEADERS });
     if (r.ok) {
       const rows = await r.json();
       if (rows.length > 0 && rows[0].data) {
-        state.masterLibrary = rows[0].data;
+        
+        // SAFETY CHECK: Ensure the cloud data is actually an array! 
+        // If it's an object (like {}), force it to be an empty array [] instead.
+        state.masterLibrary = Array.isArray(rows[0].data) ? rows[0].data : [];
+        
         renderMasterLibrary(); // Refresh the table UI
       }
     }
@@ -3136,19 +3139,16 @@ async function fetchGlobalMasterLibrary() {
     console.error('Failed to load global master library:', e);
   }
 }
-
 // 2. Overwrite the global library when an admin uploads a new Excel file
 async function pushGlobalMasterLibrary() {
   setSyncStatus('saving');
   try {
     const payload = { id: 1, data: state.masterLibrary, updated_at: new Date().toISOString() };
     
-    const r = await fetch(`${SB_URL}/rest/v1/global_master_library?on_conflict=id`, {
-      method: 'POST',
-      headers: {
-        ...SB_HEADERS,
-        'Prefer': 'resolution=merge-duplicates' 
-      },
+    // Use PATCH to simply overwrite Row 1
+    const r = await fetch(`${SB_URL}/rest/v1/global_master_library?id=eq.1`, {
+      method: 'PATCH',
+      headers: SB_HEADERS,
       body: JSON.stringify(payload)
     });
     
