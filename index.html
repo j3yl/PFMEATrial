@@ -1,5 +1,5 @@
 <!--
-v5.0.5 Bugfix: Global #5
+v5.0.6 Bugfix: Global #6
 
 v5.0.0 Added Global functionality to master PFMEA library
 
@@ -2672,8 +2672,13 @@ function importMasterExcel() {
 
 // 2. Reads and parses the Excel file once the user selects it
 function loadMasterExcel(e) {
+  alert("1. Import button clicked!"); // <--- ADD THIS
+  
   const f = e.target.files[0]; 
-  if(!f) return;
+  if(!f) {
+     alert("No file was selected!"); // <--- ADD THIS
+     return; 
+  }
   
   const reader = new FileReader();
   reader.onload = function(ev) {
