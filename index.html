@@ -1,9 +1,9 @@
 <!--
+v5.0.1 Bugfix: Global Lib
+
 v5.0.0 Added Global functionality to master PFMEA library
 
 v4.2.1 PRC tag removed from table 
-
-v4.2.0 Added working Excel Import/Export to Master PFMEA Library
 -->
 
 <!DOCTYPE html>
@@ -3143,13 +3143,12 @@ async function pushGlobalMasterLibrary() {
   try {
     const payload = { id: 1, data: state.masterLibrary, updated_at: new Date().toISOString() };
     
-    // Using UPSERT (POST with an on_conflict header) so it creates row 1 if it doesn't exist, or updates it if it does
-    const r = await fetch(`${SB_URL}/rest/v1/global_master_library`, {
+    // FIX: on_conflict belongs in the URL, and Prefer requires 'merge-duplicates'
+    const r = await fetch(`${SB_URL}/rest/v1/global_master_library?on_conflict=id`, {
       method: 'POST',
       headers: {
         ...SB_HEADERS,
-        'Prefer': 'resolution=minimal',
-        'on_conflict': 'id' 
+        'Prefer': 'resolution=merge-duplicates' 
       },
       body: JSON.stringify(payload)
     });
