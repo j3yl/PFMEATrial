@@ -1,9 +1,9 @@
 <!--
+v5.0.0 Added Global functionality to master PFMEA library
+
 v4.2.1 PRC tag removed from table 
 
 v4.2.0 Added working Excel Import/Export to Master PFMEA Library
-
-v4.1.2 Delete row function hidden
 -->
 
 <!DOCTYPE html>
@@ -182,7 +182,7 @@ v4.1.2 Delete row function hidden
   table.pfmea tr:hover td { background:rgba(255,255,255,.02); }
   table.pfmea tr.rpn-high td { background:rgba(239,68,68,.04); }
   table.pfmea tr.rpn-med td { background:rgba(245,158,11,.04); }
-  .cell-input { width:100%; min-height:36px; padding:7px 10px; background:transparent; border:none; color:var(--text); font-family:var(--font); font-size:12px; resize:none; outline:none; line-height:1.5; }
+  .cell-input { width:100%; min-height:36px; padding:7px 10px; background:transparent; border:none; color:var(--text); font-family:var(--font); font-size:12px; resize:none; outline:none; line-height:1.5; overflow: hidden; }
   .cell-input:focus { background:rgba(79,126,248,.08); }
   .cell-num { width:56px; text-align:center; padding:7px 4px; background:transparent; border:none; color:var(--text); font-family:var(--font); font-size:12px; outline:none; -moz-appearance:textfield; }
   .cell-num::-webkit-outer-spin-button, .cell-num::-webkit-inner-spin-button { -webkit-appearance:none; }
@@ -889,6 +889,14 @@ v4.1.2 Delete row function hidden
   <p>4. Click any node to open its PFMEA table.</p>
   <p>5. RPN calculates automatically as you type.</p>
   <p>6. Export to save; Import to reload on another machine.</p>
+</div>
+
+<!-- Master Data Picker Dropdown -->
+<div id="master-picker-dropdown" class="add-dropdown" style="display:none; position:fixed; z-index:9999; max-height:300px; overflow-y:auto; width:350px;">
+  <div style="padding:8px 12px; border-bottom:1px solid var(--border); font-size:11px; font-weight:700; color:var(--text2); background:var(--bg3); position:sticky; top:0; z-index:10;">
+    Select Standard Process <span style="font-weight:400; opacity:0.7;">(Auto-fills row)</span>
+  </div>
+  <div id="master-picker-list"></div>
 </div>
 
 <script>
@@ -1892,7 +1900,26 @@ function renderPfmeaTable(){
   if(mainTbody) mainTbody.innerHTML=html;
   
   if(typeof updSummaryFromEntries === 'function') updSummaryFromEntries(entries);
+
+  // --- ADD THIS TO THE BOTTOM OF renderPfmeaTable() ---
+  // Force all textareas to scale to their text height when the table draws
+  requestAnimationFrame(() => {
+    document.querySelectorAll('textarea.cell-input').forEach(el => {
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 'px';
+    });
+  });
 }
+
+// ═══════════════════════════════════
+//  AUTO-RESIZE TEXTAREAS
+// ═══════════════════════════════════
+document.addEventListener('input', e => {
+  if (e.target.tagName === 'TEXTAREA' && e.target.classList.contains('cell-input')) {
+    e.target.style.height = 'auto'; // Reset height briefly to recalculate
+    e.target.style.height = e.target.scrollHeight + 'px'; // Expand to fit text
+  }
+});
 
 function mkRow(row,i,nodeType,sourceNodeId){
   const ap=getAP(row), ap2=getAP(row,true);
@@ -1902,7 +1929,10 @@ function mkRow(row,i,nodeType,sourceNodeId){
   
   return `<tr class="${trCls}" data-rid="${id}" data-src-node="${sourceNodeId||''}" oncontextmenu="showRowCtx(event, '${id}')">
     <td><textarea class="cell-input" rows="2" oninput="updCell('${id}','processItem',this.value)">${esc(row.processItem||'')}</textarea></td>
-    <td><textarea class="cell-input" rows="2" oninput="updCell('${id}','processStep',this.value)">${esc(row.processStep||'')}</textarea></td>
+    <td style="position:relative;">
+      <textarea class="cell-input" rows="2" oninput="updCell('${id}','processStep',this.value)" style="padding-right:24px;">${esc(row.processStep||'')}</textarea>
+      ${(!row.processStep && state.masterLibrary && state.masterLibrary.length > 0) ? `<button onclick="openMasterPicker(event, '${id}')" title="Import from Master Library" style="position:absolute; top:6px; right:4px; width:20px; height:20px; border-radius:4px; background:rgba(79,126,248,0.15); color:var(--process); border:none; cursor:pointer; font-size:10px; display:flex; align-items:center; justify-content:center; transition:background 0.15s;">📚</button>` : ''}
+    </td>
     <td><textarea class="cell-input" rows="2" oninput="updCell('${id}','workElement',this.value)">${esc(row.workElement||'')}</textarea></td>
     <td><textarea class="cell-input" rows="2" oninput="updCell('${id}','fnItem',this.value)">${esc(row.fnItem||'')}</textarea></td>
     <td><textarea class="cell-input" rows="2" oninput="updCell('${id}','fnStep',this.value)">${esc(row.fnStep||'')}</textarea></td>
@@ -2124,6 +2154,112 @@ function closeAllDropdowns(){
 document.addEventListener('click', closeAllDropdowns);
 
 function openAddModalSmart(type){ openAddModal(type, null); }
+
+// ═══════════════════════════════════
+//  MASTER LIBRARY PICKER
+// ═══════════════════════════════════
+let _activePickerRowId = null;
+
+function openMasterPicker(e, rid) {
+  // Only open if the library actually has data
+  if (!state.masterLibrary || state.masterLibrary.length === 0) return;
+
+  _activePickerRowId = rid;
+  const picker = document.getElementById('master-picker-dropdown');
+  const list = document.getElementById('master-picker-list');
+  list.innerHTML = '';
+
+  // 1. Group the library data by Process Category (Column 1)
+  const groupedData = {};
+  state.masterLibrary.forEach(r => {
+      const cat = r.processName || 'Uncategorized';
+      if (!groupedData[cat]) groupedData[cat] = [];
+      groupedData[cat].push(r);
+  });
+
+  // 2. Build the visual list
+  for (const cat in groupedData) {
+      // Category Header
+      const header = document.createElement('div');
+      header.style.cssText = 'padding:6px 12px; font-size:10px; font-weight:700; color:var(--process); text-transform:uppercase; letter-spacing:0.5px; background:rgba(79,126,248,0.05); margin-top:4px;';
+      header.textContent = cat;
+      list.appendChild(header);
+
+      // The individual processes under that category
+      groupedData[cat].forEach(dataRow => {
+          const item = document.createElement('div');
+          item.className = 'add-dd-item';
+          item.style.padding = '8px 12px';
+          
+          const label = dataRow.processItem || dataRow.processStep || 'Unnamed Step';
+          const sub = dataRow.failMode ? `FM: ${dataRow.failMode}` : 'No Failure Mode specified';
+          
+          item.innerHTML = `<div><div class="add-dd-label">${esc(label)}</div><div class="add-dd-sub">${esc(sub)}</div></div>`;
+          
+          // 3. When clicked, copy the master data into the active row!
+          item.onclick = (ev) => {
+              ev.stopPropagation();
+              applyMasterDataToRow(rid, dataRow);
+              closeMasterPicker();
+          };
+          list.appendChild(item);
+      });
+  }
+
+  // 4. Position the dropdown directly under the user's mouse
+  picker.style.display = 'block';
+  requestAnimationFrame(() => {
+      picker.classList.add('open');
+      const r = picker.getBoundingClientRect();
+      let top = e.clientY + 10;
+      let left = e.clientX;
+      
+      // Prevent it from falling off the screen
+      if (top + r.height > window.innerHeight) top = e.clientY - r.height - 10;
+      if (left + r.width > window.innerWidth) left = window.innerWidth - r.width - 20;
+      
+      picker.style.top = top + 'px';
+      picker.style.left = left + 'px';
+  });
+
+  // Close when clicking anywhere else
+  setTimeout(() => document.addEventListener('click', closeMasterPicker, {once:true}), 10);
+}
+
+function closeMasterPicker() {
+  const picker = document.getElementById('master-picker-dropdown');
+  if (picker) {
+      picker.classList.remove('open');
+      setTimeout(() => picker.style.display = 'none', 150);
+  }
+  _activePickerRowId = null;
+}
+
+function applyMasterDataToRow(rid, masterData) {
+  const found = findRowAndNode(rid);
+  if (!found) return;
+
+  const r = found.row;
+  
+  // Only overwrite empty fields! We don't want to erase custom data the user already typed.
+  if(!r.processItem) r.processItem = masterData.processItem;
+  if(!r.processStep) r.processStep = masterData.processStep;
+  if(!r.workElement) r.workElement = masterData.workElement;
+  if(!r.fnItem) r.fnItem = masterData.fnItem;
+  if(!r.fnStep) r.fnStep = masterData.fnStep;
+  if(!r.fnWork) r.fnWork = masterData.fnWork;
+  if(!r.failEffect) r.failEffect = masterData.failEffect;
+  if(!r.sev) r.sev = masterData.sev;
+  if(!r.failMode) r.failMode = masterData.failMode;
+  if(!r.failCause) r.failCause = masterData.failCause;
+  if(!r.prevCtrl) r.prevCtrl = masterData.prevCtrl;
+  if(!r.occ) r.occ = masterData.occ;
+  if(!r.detCtrl) r.detCtrl = masterData.detCtrl;
+  if(!r.det) r.det = masterData.det;
+
+  saveState();
+  renderPfmeaTable(); // Refresh the table to show the new data
+}
 
 // ═══════════════════════════════════
 //  NODES CRUD
@@ -2594,6 +2730,7 @@ function loadMasterExcel(e) {
 
       saveState();
       renderMasterLibrary(); // Force the screen to update
+      pushGlobalMasterLibrary(); // Make the new library available for the dropdowns
       alert(`Successfully imported ${state.masterLibrary.length} standardized rows into the Master Library!`);
 
     } catch (err) {
@@ -2967,6 +3104,7 @@ async function loadState(){
   }
   renderTree();
   updatePfmeaView();
+  fetchGlobalMasterLibrary(); // Load the global master library from Supabase
   renderMasterLibrary();
 }
 
@@ -2976,6 +3114,53 @@ function setSyncStatus(s){
   const map={loading:['⟳ Syncing…','var(--text3)'], saving:['⟳ Saving…','var(--text3)'], saved:['✓ Saved','var(--green)'], error:['⚠ Offline','var(--amber)']};
   const [txt,col]=map[s]||map.saved;
   el.textContent=txt; el.style.color=col;
+}
+
+// ═══════════════════════════════════
+//  GLOBAL MASTER LIBRARY SYNC
+// ═══════════════════════════════════
+
+// 1. Fetch the library for ALL users when they open the app
+async function fetchGlobalMasterLibrary() {
+  try {
+    // We hardcode id=1 so EVERY user is looking at the exact same row in the database
+    const r = await fetch(`${SB_URL}/rest/v1/global_master_library?id=eq.1&select=*`, { headers: SB_HEADERS });
+    if (r.ok) {
+      const rows = await r.json();
+      if (rows.length > 0 && rows[0].data) {
+        state.masterLibrary = rows[0].data;
+        renderMasterLibrary(); // Refresh the table UI
+      }
+    }
+  } catch(e) {
+    console.error('Failed to load global master library:', e);
+  }
+}
+
+// 2. Overwrite the global library when an admin uploads a new Excel file
+async function pushGlobalMasterLibrary() {
+  setSyncStatus('saving');
+  try {
+    const payload = { id: 1, data: state.masterLibrary, updated_at: new Date().toISOString() };
+    
+    // Using UPSERT (POST with an on_conflict header) so it creates row 1 if it doesn't exist, or updates it if it does
+    const r = await fetch(`${SB_URL}/rest/v1/global_master_library`, {
+      method: 'POST',
+      headers: {
+        ...SB_HEADERS,
+        'Prefer': 'resolution=minimal',
+        'on_conflict': 'id' 
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    if(!r.ok) throw new Error(await r.text());
+    setSyncStatus('saved');
+    
+  } catch(e) {
+    console.error('Supabase global library save error:', e);
+    setSyncStatus('error');
+  }
 }
 
 // ═══════════════════════════════════
