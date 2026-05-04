@@ -1,5 +1,5 @@
 <!--
-v5.0.9 Bugfix: Global #9
+v5.0.10 Bugfix: Global #10
 
 v5.0.0 Added Global functionality to master PFMEA library
 
@@ -862,7 +862,7 @@ v4.2.1 PRC tag removed from table
 </div>
 
 <input type="file" id="file-input" accept=".json" style="display:none" onchange="loadFile(event)" />
-<input type="file" id="excel-file-input" accept=".xlsx, .xls" style="display:none" onchange="loadMasterExcel(event)" />
+<input type="file" id="excel-file-input" accept=".xlsx, .xls" style="display:none" />
 
 <button class="tips-pill" onclick="toggleTips()">💡 PFMEA Guide</button>
 <div class="tips-panel" id="tips-panel">
@@ -2667,248 +2667,9 @@ function exportCurrentXLSX(){
 
 // 1. Triggers the hidden file input when the dropdown button is clicked
 function importMasterExcel() {
-  alert("STEP 1: Dropdown button clicked! Opening file picker...");
   const fileInput = document.getElementById('excel-file-input');
-  fileInput.value = ''; // Force clear the input to bypass the "Same File" trap
+  fileInput.value = '';
   fileInput.click();
-}
-
-// 2. Reads and parses the Excel file once the user selects it
-function loadMasterExcel(e) {
-  alert("STEP 2: File successfully selected! Reading data...");
-  
-  const f = e.target.files[0]; 
-  if(!f) {
-     alert("Error: No file was detected.");
-     return;
-  }
-  
-  const reader = new FileReader();
-  reader.onload = function(ev) {
-    try {
-      const data = new Uint8Array(ev.target.result);
-      const workbook = XLSX.read(data, {type: 'array'});
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const excelRows = XLSX.utils.sheet_to_json(worksheet, {header: 1}); 
-
-      if(!state.masterLibrary) state.masterLibrary = [];
-      state.masterLibrary = []; 
-
-      for(let i = 4; i < excelRows.length; i++) {
-         const r = excelRows[i];
-         if(!r || r.length === 0 || !r[0]) continue;
-
-         state.masterLibrary.push({
-            id: genId(),
-            processName: r[0] || '',
-            processItem: r[1] || '',
-            processStep: r[2] || '',
-            workElement: r[3] || '',
-            fnItem: r[4] || '',
-            fnStep: r[5] || '',
-            fnWork: r[6] || '',
-            failEffect: r[7] || '',
-            sev: r[8] || '',
-            failMode: r[9] || '',
-            failCause: r[10] || '',
-            prevCtrl: r[11] || '',
-            occ: r[12] || '',
-            detCtrl: r[13] || '',
-            det: r[14] || '',
-            spProdChar: r[16] || '',
-            prevAction: r[17] || '',
-            detAction: r[18] || '',
-            resp: r[19] || '',
-            date: r[20] || '',
-            status: r[21] || '',
-            taken: r[22] || '',
-            completionDate: r[23] || '',
-            sev2: r[24] || '',
-            occ2: r[25] || '',
-            det2: r[26] || ''
-         });
-      }
-
-      saveState();
-      renderMasterLibrary(); 
-      alert(`STEP 3: Read ${state.masterLibrary.length} rows from Excel. Sending to Supabase...`);
-      
-      // Trigger the cloud save!
-      pushGlobalMasterLibrary(); 
-
-    } catch (err) {
-      console.error(err);
-      alert('Error reading Excel file. Make sure it is a valid .xlsx file.');
-    }
-  };
-  
-  reader.readAsArrayBuffer(f); 
-}
-
-function renderMasterLibrary() {
-   const tbody = document.getElementById('library-tbody');
-   if(!tbody) return;
-
-   // If there is no data OR if it somehow isn't an array, show the empty state message
-   if(!state.masterLibrary || !Array.isArray(state.masterLibrary) || state.masterLibrary.length === 0) {
-      tbody.innerHTML = `<tr>
-        <td colspan="28" style="text-align:left; padding:60px 20px; color:var(--text3); font-size:13px; line-height:1.6;">
-          <div style="font-size:24px; margin-bottom:8px;">📝</div>
-          Your Master Library is empty.<br>Start adding standardized failure modes, causes, and severity scores here!
-        </td>
-      </tr>`;
-      return;
-   }
-
-   // If there is data, build the HTML rows
-   let html = '';
-   state.masterLibrary.forEach(row => {
-      const ap=getAP(row), ap2=getAP(row,true);
-      const apc=apClass(ap), apc2=apClass(ap2);
-      const trCls=ap==='H'?'rpn-high':ap==='M'?'rpn-med':'';
-
-      html += `<tr class="${trCls}">
-        <td style="font-weight:700; padding:10px 8px; color:var(--text); background:rgba(255,255,255,0.03);">${esc(row.processName||'')}</td>
-        <td><div style="padding:10px 8px">${esc(row.processItem||'')}</div></td>
-        <td><div style="padding:10px 8px">${esc(row.processStep||'')}</div></td>
-        <td><div style="padding:10px 8px">${esc(row.workElement||'')}</div></td>
-        <td><div style="padding:10px 8px">${esc(row.fnItem||'')}</div></td>
-        <td><div style="padding:10px 8px">${esc(row.fnStep||'')}</div></td>
-        <td><div style="padding:10px 8px">${esc(row.fnWork||'')}</div></td>
-        <td><div style="padding:10px 8px">${esc(row.failEffect||'')}</div></td>
-        <td style="text-align:center; padding:10px 8px; font-weight:700;">${esc(row.sev||'')}</td>
-        <td><div style="padding:10px 8px">${esc(row.failMode||'')}</div></td>
-        <td><div style="padding:10px 8px">${esc(row.failCause||'')}</div></td>
-        <td><div style="padding:10px 8px">${esc(row.prevCtrl||'')}</div></td>
-        <td style="text-align:center; padding:10px 8px; font-weight:700;">${esc(row.occ||'')}</td>
-        <td><div style="padding:10px 8px">${esc(row.detCtrl||'')}</div></td>
-        <td style="text-align:center; padding:10px 8px; font-weight:700;">${esc(row.det||'')}</td>
-        <td><div class="rpn-badge ${apc}">${ap||'–'}</div></td>
-        <td style="text-align:center; padding:10px 8px">${esc(row.spProdChar||'')}</td>
-        <td><div style="padding:10px 8px">${esc(row.prevAction||'')}</div></td>
-        <td><div style="padding:10px 8px">${esc(row.detAction||'')}</div></td>
-        <td><div style="padding:10px 8px">${esc(row.resp||'')}</div></td>
-        <td style="text-align:center; padding:10px 8px">${esc(row.date||'')}</td>
-        <td style="text-align:center; padding:10px 8px">${esc(row.status||'')}</td>
-        <td><div style="padding:10px 8px">${esc(row.taken||'')}</div></td>
-        <td style="text-align:center; padding:10px 8px">${esc(row.completionDate||'')}</td>
-        <td style="text-align:center; padding:10px 8px">${esc(row.sev2||'')}</td>
-        <td style="text-align:center; padding:10px 8px">${esc(row.occ2||'')}</td>
-        <td style="text-align:center; padding:10px 8px">${esc(row.det2||'')}</td>
-        <td><div class="rpn-badge ${apc2}">${ap2||'–'}</div></td>
-      </tr>`;
-   });
-   tbody.innerHTML = html;
-}
-
-function exportMasterXLSX() {
-  if(typeof XLSX === 'undefined'){ alert('Excel library not loaded yet.'); return; }
-  
-  const wb = XLSX.utils.book_new();
-  const ws = {};
-  const merges = [];
-  let R = 0; 
-
-  function setCell(r, c, value, style){
-    const ref = XLSX.utils.encode_cell({r, c});
-    ws[ref] = {v:String(value||''), t:'s', s:style};
-  }
-  function merge(r1, c1, r2, c2){ merges.push({s:{r:r1,c:c1}, e:{r:r2,c:c2}}); }
-
-  const COL_STEP2  = '1F3864'; const COL_STEP3  = '375623'; const COL_STEP4  = '7B0000';
-  const COL_STEP5  = '7B3F00'; const COL_STEP6  = '3A006F'; const COL_STEP2L = 'BDD7EE';
-  const COL_STEP3L = 'E2EFDA'; const COL_STEP4L = 'FFCCCC'; const COL_STEP5L = 'FFF2CC';
-  const COL_STEP6L = 'E8D5FF'; const COL_HDR    = 'F2F2F2'; const COL_WHITE  = 'FFFFFF';
-
-  function cellStyle(bgHex, fgHex, bold, wrapText, vertical){
-    const style = {
-      fill:{ patternType:'solid', fgColor:{rgb: bgHex} },
-      font:{ bold:!!bold, color:{rgb: fgHex||COL_WHITE}, name:'Arial', sz:9 },
-      alignment:{ wrapText:!!wrapText, horizontal:'center', vertical: vertical||'center' },
-      border:{ top:{style:'thin',color:{rgb:'AAAAAA'}}, bottom:{style:'thin',color:{rgb:'AAAAAA'}}, left:{style:'thin',color:{rgb:'AAAAAA'}}, right:{style:'thin',color:{rgb:'AAAAAA'}} }
-    };
-    if(vertical==='rotate') style.alignment = {textRotation:90, horizontal:'center', vertical:'center', wrapText:false};
-    return style;
-  }
-
-  // 1. ADD TITLE
-  setCell(0, 0, "MASTER PFMEA LIBRARY", cellStyle('FFFFFF', '000000', true, false, 'bottom'));
-  ws[XLSX.utils.encode_cell({r:0,c:0})].s.font.sz = 14;
-  ws[XLSX.utils.encode_cell({r:0,c:0})].s.border = {}; 
-  R = 2; 
-
-  // 2. ADD COLORED BANNERS (Shifted left by 1)
-  const banners = [
-    {label:'Structure Analysis (Step 2)', col:0, span:3, bg:COL_STEP2},
-    {label:'FUNCTIONAL ANALYSIS (Step 3)', col:3, span:3, bg:COL_STEP3},
-    {label:'FAILURE ANALYSIS (Step 4)', col:6, span:4, bg:COL_STEP4},
-    {label:'RISK ANALYSIS (Step 5)', col:10, span:5, bg:COL_STEP5},
-    {label:'OPTIMIZATION (Step 6)', col:15, span:12, bg:COL_STEP6},
-  ];
-  
-  banners.forEach(b => {
-    const style = cellStyle(b.bg, b.bg === COL_HDR ? '000000' : COL_WHITE, true, false);
-    setCell(R, b.col, b.label, style);
-    if(b.span > 1){
-      merge(R, b.col, R, b.col + b.span - 1);
-      for(let c=b.col+1; c<b.col+b.span; c++) setCell(R, c, '', style);
-    }
-  });
-  R++;
-
-  // 3. ADD SPECIFIC COLUMN HEADERS (Removed Process Name)
-  const headers = [
-    {label:'1. Process Item System, Subsystem, Part Element', bg:COL_STEP2L, vert:false},
-    {label:'2. Process Step Station No. & Name of Focus Element', bg:COL_STEP2L, vert:false},
-    {label:'3. Process Work Element (Man, Machine, Material, etc.)', bg:COL_STEP2L, vert:false},
-    {label:'1. Function of the Process Item', bg:COL_STEP3L, vert:false},
-    {label:'2. Function of the Process Step and Product Characteristic', bg:COL_STEP3L, vert:false},
-    {label:'3. Function of the Process Work Element and Process Characteristic', bg:COL_STEP3L, vert:false},
-    {label:'1. Failure Effects (FE)', bg:COL_STEP4L, vert:false},
-    {label:'Severity (S) of FE', bg:COL_STEP4L, vert:true},
-    {label:'2. Failure Mode (FM) of the Process Step', bg:COL_STEP4L, vert:false},
-    {label:'3. Failure Cause (FC) of the Work Element', bg:COL_STEP4L, vert:false},
-    {label:'Current Prevention Control (PC) of FC', bg:COL_STEP5L, vert:false},
-    {label:'Occurrence (O) of the FC', bg:COL_STEP5L, vert:true},
-    {label:'Current Detection Controls (DC) of FC/FM', bg:COL_STEP5L, vert:false},
-    {label:'Detection (D) of FC/FM', bg:COL_STEP5L, vert:true},
-    {label:'PFMEA AP', bg:COL_STEP5L, vert:true},
-    {label:'Sp Prod Char', bg:COL_STEP6L, vert:true},
-    {label:'Prevention Action', bg:COL_STEP6L, vert:false},
-    {label:'Detection Action', bg:COL_STEP6L, vert:false},
-    {label:'Responsible', bg:COL_STEP6L, vert:false},
-    {label:'ECD', bg:COL_STEP6L, vert:false},
-    {label:'Status', bg:COL_STEP6L, vert:false},
-    {label:'Actions Taken', bg:COL_STEP6L, vert:false},
-    {label:'Completion Date', bg:COL_STEP6L, vert:false},
-    {label:'Severity (S)', bg:COL_STEP6L, vert:true},
-    {label:'Occurrence (O)', bg:COL_STEP6L, vert:true},
-    {label:'Detection (D)', bg:COL_STEP6L, vert:true},
-    {label:'PFMEA AP', bg:COL_STEP6L, vert:true},
-  ];
-  
-  headers.forEach((h, colIdx) => {
-    const style = cellStyle(h.bg, '000000', true, true, h.vert ? 'rotate' : 'center');
-    setCell(R, colIdx, h.label, style);
-  });
-  R++;
-
-  // 4. SET COLUMN WIDTHS AND ROW HEIGHTS (Shifted)
-  const colW = [18,18,18,22,22,22,22,5,22,22,20,5,20,5,5,6,20,20,14,12,12,20,14,5,5,5,5];
-  ws['!cols'] = colW.map(w => ({wch:w}));
-
-  ws['!rows'] = [];
-  ws['!rows'][0] = {hpt: 30}; 
-  ws['!rows'][2] = {hpt: 18}; 
-  ws['!rows'][3] = {hpt: 80}; 
-
-  ws['!merges'] = merges;
-  ws['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:R+10,c:26}}); // c:26 reflects 27 total columns
-
-  // 5. FINALIZE AND DOWNLOAD
-  XLSX.utils.book_append_sheet(wb, ws, "Master Database");
-  const dateStr = new Date().toISOString().slice(0,10);
-  XLSX.writeFile(wb, `Master_PFMEA_Library_${dateStr}.xlsx`);
 }
 
 function loadMasterExcel(e) {
@@ -3243,6 +3004,12 @@ function openModal(id){ document.getElementById(id).classList.add('open'); }
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-bg').forEach(bg=>bg.addEventListener('click',e=>{if(e.target===bg)bg.classList.remove('open');}));
 document.getElementById('add-name').addEventListener('keydown',e=>{if(e.key==='Enter')confirmAdd();});
+
+// Attach excel file input listener via JS (more reliable than inline onchange
+// when the input is triggered programmatically from inside a dropdown click handler)
+document.getElementById('excel-file-input').addEventListener('change', function(e) {
+  loadMasterExcel(e);
+});
 
 let tipsOpen=false;
 function toggleTips(){ tipsOpen=!tipsOpen; document.getElementById('tips-panel').classList.toggle('open',tipsOpen); }
