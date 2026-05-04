@@ -1,5 +1,5 @@
 <!--
-v5.0.11 Bugfix: Global #11
+v5.0.12 Bugfix: Global #12
 
 v5.0.0 Added Global functionality to master PFMEA library
 
@@ -2895,18 +2895,20 @@ function loadMasterExcel(e) {
          });
       }
 
-      saveState();
-      renderMasterLibrary(); // Force the screen to update
-      alert(`Successfully imported ${state.masterLibrary.length} standardized rows into the Master Library!`);
+      renderMasterLibrary();
+      // Push to the global_master_library Supabase table (separate from project state)
+      pushGlobalMasterLibrary().then(() => {
+        alert(`Successfully imported ${state.masterLibrary.length} rows into the Master Library and saved to cloud!`);
+      });
 
     } catch (err) {
-      console.error(err);
-      alert('Error reading Excel file. Make sure it is a valid .xlsx file exported from this app.');
+      console.error('loadMasterExcel parse error:', err);
+      alert('Error reading Excel file: ' + err.message);
     }
   };
-  
-  reader.readAsArrayBuffer(f); 
-  e.target.value = ''; 
+
+  reader.readAsArrayBuffer(f);
+  e.target.value = '';
 }
 
 function loadFile(e){
@@ -3071,13 +3073,13 @@ async function pushGlobalMasterLibrary() {
   try {
     const payload = { data: state.masterLibrary, updated_at: new Date().toISOString() };
     
-    const r = await fetch(`${SB_URL}/rest/v1/global_master_library?id=eq.1`, {
-      method: 'PATCH',
+    const r = await fetch(`${SB_URL}/rest/v1/global_master_library`, {
+      method: 'POST',
       headers: {
         ...SB_HEADERS,
-        'Prefer': 'return=representation' // Forces Supabase to echo back the updated row!
+        'Prefer': 'resolution=merge-duplicates,return=representation'
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({ id: 1, ...payload })
     });
     
     const responseData = await r.json(); 
@@ -3096,6 +3098,7 @@ async function pushGlobalMasterLibrary() {
     
   } catch(e) {
     console.error('Supabase global library save error:', e);
+    alert('Failed to save to cloud: ' + e.message);
     setSyncStatus('error');
   }
 }
