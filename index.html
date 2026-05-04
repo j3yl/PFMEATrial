@@ -1,5 +1,5 @@
 <!--
-v5.0.8 Bugfix: Global #8
+v5.0.9 Bugfix: Global #9
 
 v5.0.0 Added Global functionality to master PFMEA library
 
@@ -3129,12 +3129,8 @@ async function fetchGlobalMasterLibrary() {
     if (r.ok) {
       const rows = await r.json();
       if (rows.length > 0 && rows[0].data) {
-        
-        // SAFETY CHECK: Ensure the cloud data is actually an array! 
-        // If it's an object (like {}), force it to be an empty array [] instead.
         state.masterLibrary = Array.isArray(rows[0].data) ? rows[0].data : [];
-        
-        renderMasterLibrary(); // Refresh the table UI
+        renderMasterLibrary(); 
       }
     }
   } catch(e) {
