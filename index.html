@@ -1,5 +1,5 @@
 <!--
-v5.0.6 Bugfix: Global #6
+v5.0.7 Bugfix: Global #7
 
 v5.0.0 Added Global functionality to master PFMEA library
 
@@ -2666,8 +2666,11 @@ function exportCurrentXLSX(){
 }
 
 // 1. Triggers the hidden file input when the dropdown button is clicked
+// 1. Triggers the hidden file input when the dropdown button is clicked
 function importMasterExcel() {
-  document.getElementById('excel-file-input').click();
+  const fileInput = document.getElementById('excel-file-input');
+  fileInput.value = ''; // <--- THIS CLEARS IT! Forces the browser to recognize the file.
+  fileInput.click();
 }
 
 // 2. Reads and parses the Excel file once the user selects it
