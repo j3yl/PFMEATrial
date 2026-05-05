@@ -1,9 +1,9 @@
 <!--
+v5.1.1 Updated Master PFMEA Library structure to reflect Project Title
+
 v5.0.12 Bugfix: Global #12
 
 v5.0.0 Added Global functionality to master PFMEA library
-
-v4.2.1 PRC tag removed from table 
 -->
 
 <!DOCTYPE html>
@@ -714,6 +714,7 @@ v4.2.1 PRC tag removed from table
             
             <thead id="library-thead">
               <tr>
+                <th rowspan="2" style="text-align:center; background:var(--bg3); color:var(--text2); min-width:120px; border-bottom:1px solid var(--border);">PROJECT TITLE</th>
                 <th colspan="3" style="text-align:center;background:rgba(79,126,248,.12);color:var(--process)">STRUCTURE ANALYSIS (Step 2)</th>
                 <th colspan="3" style="text-align:center;background:rgba(52,199,123,.12);color:var(--sub)">FUNCTION ANALYSIS (Step 3)</th>
                 <th colspan="4" style="text-align:center;background:rgba(239,68,68,.12);color:var(--red)">FAILURE ANALYSIS (Step 4)</th>
@@ -2169,10 +2170,13 @@ function openMasterPicker(e, rid) {
   const list = document.getElementById('master-picker-list');
   list.innerHTML = '';
 
-  // 1. Group the library data by Process Category (Column 1)
+  // 1. Group the library data by Process Category
   const groupedData = {};
   state.masterLibrary.forEach(r => {
-      const cat = r.processName || 'Uncategorized';
+      // Group by Process Item instead of the deleted processName
+      let cat = r.processItem || 'Uncategorized';
+      if (r.projectTitle) cat = `[${r.projectTitle}] ${cat}`; 
+      
       if (!groupedData[cat]) groupedData[cat] = [];
       groupedData[cat].push(r);
   });
@@ -2679,7 +2683,7 @@ function renderMasterLibrary() {
    // If there is no data OR if it somehow isn't an array, show the empty state message
    if(!state.masterLibrary || !Array.isArray(state.masterLibrary) || state.masterLibrary.length === 0) {
       tbody.innerHTML = `<tr>
-        <td colspan="28" style="text-align:left; padding:60px 20px; color:var(--text3); font-size:13px; line-height:1.6;">
+        <td colspan="29" style="text-align:left; padding:60px 20px; color:var(--text3); font-size:13px; line-height:1.6;">
           <div style="font-size:24px; margin-bottom:8px;">📝</div>
           Your Master Library is empty.<br>Start adding standardized failure modes, causes, and severity scores here!
         </td>
@@ -2695,7 +2699,10 @@ function renderMasterLibrary() {
       const trCls=ap==='H'?'rpn-high':ap==='M'?'rpn-med':'';
 
       html += `<tr class="${trCls}">
-        <td style="font-weight:700; padding:10px 8px; color:var(--text); background:rgba(255,255,255,0.03);">${esc(row.processName||'')}</td>
+        <!-- 1. PROJECT TITLE -->
+        <td style="font-weight:700; padding:10px 8px; color:var(--amber); background:rgba(255,255,255,0.015); border-right:1px solid var(--border);">${esc(row.projectTitle||'')}</td>
+        
+        <!-- 2. PROCESS ITEM (Rogue processName column deleted!) -->
         <td><div style="padding:10px 8px">${esc(row.processItem||'')}</div></td>
         <td><div style="padding:10px 8px">${esc(row.processStep||'')}</div></td>
         <td><div style="padding:10px 8px">${esc(row.workElement||'')}</div></td>
@@ -2766,11 +2773,12 @@ function exportMasterXLSX() {
 
   // 2. ADD COLORED BANNERS (Shifted left by 1)
   const banners = [
-    {label:'Structure Analysis (Step 2)', col:0, span:3, bg:COL_STEP2},
-    {label:'FUNCTIONAL ANALYSIS (Step 3)', col:3, span:3, bg:COL_STEP3},
-    {label:'FAILURE ANALYSIS (Step 4)', col:6, span:4, bg:COL_STEP4},
-    {label:'RISK ANALYSIS (Step 5)', col:10, span:5, bg:COL_STEP5},
-    {label:'OPTIMIZATION (Step 6)', col:15, span:12, bg:COL_STEP6},
+    {label:'Metadata', col:0, span:1, bg:COL_HDR},
+    {label:'Structure Analysis (Step 2)', col:1, span:3, bg:COL_STEP2},
+    {label:'FUNCTIONAL ANALYSIS (Step 3)', col:4, span:3, bg:COL_STEP3},
+    {label:'FAILURE ANALYSIS (Step 4)', col:7, span:4, bg:COL_STEP4},
+    {label:'RISK ANALYSIS (Step 5)', col:11, span:5, bg:COL_STEP5},
+    {label:'OPTIMIZATION (Step 6)', col:16, span:12, bg:COL_STEP6},
   ];
   
   banners.forEach(b => {
@@ -2785,6 +2793,7 @@ function exportMasterXLSX() {
 
   // 3. ADD SPECIFIC COLUMN HEADERS (Removed Process Name)
   const headers = [
+    {label:'Project Title', bg:COL_HDR, vert:false},
     {label:'1. Process Item System, Subsystem, Part Element', bg:COL_STEP2L, vert:false},
     {label:'2. Process Step Station No. & Name of Focus Element', bg:COL_STEP2L, vert:false},
     {label:'3. Process Work Element (Man, Machine, Material, etc.)', bg:COL_STEP2L, vert:false},
@@ -2821,7 +2830,7 @@ function exportMasterXLSX() {
   R++;
 
   // 4. SET COLUMN WIDTHS AND ROW HEIGHTS (Shifted)
-  const colW = [18,18,18,22,22,22,22,5,22,22,20,5,20,5,5,6,20,20,14,12,12,20,14,5,5,5,5];
+  const colW = [20, 18,18,18,22,22,22,22,5,22,22,20,5,20,5,5,6,20,20,14,12,12,20,14,5,5,5,5];
   ws['!cols'] = colW.map(w => ({wch:w}));
 
   ws['!rows'] = [];
@@ -2830,7 +2839,7 @@ function exportMasterXLSX() {
   ws['!rows'][3] = {hpt: 80}; 
 
   ws['!merges'] = merges;
-  ws['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:R+10,c:26}}); // c:26 reflects 27 total columns
+  ws['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:R+10,c:27}}); // Changed from 26 to 27
 
   // 5. FINALIZE AND DOWNLOAD
   XLSX.utils.book_append_sheet(wb, ws, "Master Database");
@@ -2863,10 +2872,10 @@ function loadMasterExcel(e) {
          // Skip entirely blank rows
          if(!r || r.length === 0 || !r[0]) continue;
 
-         // Map the 28 columns from Excel into JavaScript data
+        
          state.masterLibrary.push({
             id: genId(),
-            processName: r[0] || '',
+            projectTitle: r[0] || '',
             processItem: r[1] || '',
             processStep: r[2] || '',
             workElement: r[3] || '',
@@ -2881,6 +2890,7 @@ function loadMasterExcel(e) {
             occ: r[12] || '',
             detCtrl: r[13] || '',
             det: r[14] || '',
+            // Note: r[15] is the AP calculation column in Excel, so we skip saving it
             spProdChar: r[16] || '',
             prevAction: r[17] || '',
             detAction: r[18] || '',
