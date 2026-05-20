@@ -1,9 +1,9 @@
 <!--
+v5.2.1 Bugfix: Master PFMEA Library now working as intended
+
 v5.1.1 Updated Master PFMEA Library structure to reflect Project Title
 
 v5.0.12 Bugfix: Global #12
-
-v5.0.0 Added Global functionality to master PFMEA library
 -->
 
 <!DOCTYPE html>
@@ -2771,7 +2771,7 @@ function exportMasterXLSX() {
   ws[XLSX.utils.encode_cell({r:0,c:0})].s.border = {}; 
   R = 2; 
 
-  // 2. ADD COLORED BANNERS (Shifted left by 1)
+  // 2. ADD COLORED BANNERS (Shifted right by 1 for Project Title)
   const banners = [
     {label:'Metadata', col:0, span:1, bg:COL_HDR},
     {label:'Structure Analysis (Step 2)', col:1, span:3, bg:COL_STEP2},
@@ -2791,7 +2791,7 @@ function exportMasterXLSX() {
   });
   R++;
 
-  // 3. ADD SPECIFIC COLUMN HEADERS (Removed Process Name)
+  // 3. ADD SPECIFIC COLUMN HEADERS
   const headers = [
     {label:'Project Title', bg:COL_HDR, vert:false},
     {label:'1. Process Item System, Subsystem, Part Element', bg:COL_STEP2L, vert:false},
@@ -2829,17 +2829,59 @@ function exportMasterXLSX() {
   });
   R++;
 
-  // 4. SET COLUMN WIDTHS AND ROW HEIGHTS (Shifted)
+  // ==========================================
+  // THIS IS THE MISSING DATA LOOP!
+  // ==========================================
+  const apColor = {H:'FF0000', M:'FF9900', L:'00B050', '':'000000'};
+  
+  if(state.masterLibrary && state.masterLibrary.length > 0) {
+    state.masterLibrary.forEach(row => {
+      const ap = getAP(row), ap2 = getAP(row, true);
+      const rowBg = ap === 'H' ? 'FFCCCC' : ap === 'M' ? 'FFF2CC' : 'FFFFFF';
+      
+      const dataStyle = (bg) => ({
+        fill:{patternType:'solid',fgColor:{rgb:bg||rowBg}},
+        font:{name:'Arial',sz:9,color:{rgb:'000000'}},
+        alignment:{wrapText:true,vertical:'top'},
+        border:{top:{style:'thin',color:{rgb:'DDDDDD'}},bottom:{style:'thin',color:{rgb:'DDDDDD'}},left:{style:'thin',color:{rgb:'DDDDDD'}},right:{style:'thin',color:{rgb:'DDDDDD'}}}
+      });
+      const numStyle = (bg) => { const s=dataStyle(bg); s.alignment={horizontal:'center',vertical:'top'}; return s; };
+      const apStyle = (apVal, bg) => { const s=numStyle(bg); s.font={name:'Arial',sz:9,bold:true,color:{rgb:apColor[apVal]||'000000'}}; return s; };
+
+      const vals = [
+        row.projectTitle || '',
+        row.processItem||'', row.processStep||'', row.workElement||'',
+        row.fnItem||'', row.fnStep||'', row.fnWork||'',
+        row.failEffect||'', row.sev||'', row.failMode||'', row.failCause||'',
+        row.prevCtrl||'', row.occ||'', row.detCtrl||'', row.det||'',
+        ap, row.spProdChar||'',
+        row.prevAction||'', row.detAction||'', row.resp||'',
+        row.date||'', row.status||'', row.taken||'', row.completionDate||'',
+        row.sev2||'', row.occ2||'', row.det2||'', ap2
+      ];
+      
+      vals.forEach((v, ci) => {
+        const isAP = (ci===15 || ci===27); // AP Columns
+        const isNum = [8,12,14,15,24,25,26,27].includes(ci); // Number columns
+        const sty = isAP ? apStyle(isAP&&ci===15?ap:ap2, rowBg) : isNum ? numStyle(rowBg) : dataStyle(rowBg);
+        setCell(R, ci, String(v), sty);
+      });
+      R++;
+    });
+  }
+
+  // 4. SET COLUMN WIDTHS AND ROW HEIGHTS
   const colW = [20, 18,18,18,22,22,22,22,5,22,22,20,5,20,5,5,6,20,20,14,12,12,20,14,5,5,5,5];
   ws['!cols'] = colW.map(w => ({wch:w}));
 
   ws['!rows'] = [];
-  ws['!rows'][0] = {hpt: 30}; 
-  ws['!rows'][2] = {hpt: 18}; 
-  ws['!rows'][3] = {hpt: 80}; 
+  for(let i=0; i<R; i++) {
+    ws['!rows'][i] = {hpt: i === 0 ? 30 : i === 2 ? 18 : i === 3 ? 80 : 40};
+  }
 
   ws['!merges'] = merges;
-  ws['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:R+10,c:27}}); // Changed from 26 to 27
+  // Ensure the bounding box captures all the data rows we just added
+  ws['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r: Math.max(R-1, 10), c:27}});
 
   // 5. FINALIZE AND DOWNLOAD
   XLSX.utils.book_append_sheet(wb, ws, "Master Database");
