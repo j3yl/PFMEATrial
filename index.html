@@ -1,9 +1,9 @@
 <!--
+v5.2.2 Minor code refator and cleanup
+
 v5.2.1 Bugfix: Master PFMEA Library now working as intended
 
 v5.1.1 Updated Master PFMEA Library structure to reflect Project Title
-
-v5.0.12 Bugfix: Global #12
 -->
 
 <!DOCTYPE html>
@@ -1025,8 +1025,7 @@ function setView(v){
 
 function unlockLibrary() {
   const pwdInput = document.getElementById('lib-password');
-  
-  // Change "admin" to whatever password you want to use
+
   if (pwdInput.value === 'Pfmea@MXS2026') { 
     _libraryUnlocked = true;
     document.getElementById('library-lock-screen').style.display = 'none';
@@ -1617,27 +1616,14 @@ function showCtx(x,y,n){
   const m=document.createElement('div'); m.className='fc-ctx';
   m.style.left=x+'px'; m.style.top=y+'px';
   const items=[];
+ 
+  items.push({label:'Open PFMEA', fn:()=>selectNode(n.id)});
+  items.push({label:'⇢ Connect from here', fn:()=>enterConnectMode(n.id)});
+  items.push({sep:true});
+  items.push({label:'Rename', fn:()=>renameNode(n.id)});
+  items.push({label:'Edit Sublabel', fn:()=>editSublabel(n.id)}); // <-- NEW OPTION
+  items.push({label:'Delete', danger:true, fn:()=>deleteNode(n.id)});
   
-  if(selectedNodes.length > 1) {
-    items.push({label:'Open Group PFMEA', fn:()=>updatePfmeaView()});
-    items.push({sep:true});
-    items.push({label:'Delete Group', danger:true, fn:()=>{
-       if(!confirm(`Delete ${selectedNodes.length} nodes and all their PFMEA data?`)) return;
-       selectedNodes.forEach(id => {
-           state.nodes=state.nodes.filter(x=>x.id!==id);
-           state.nodes.forEach(x=>{ x.connections=(x.connections||[]).filter(c=>c!==id); });
-       });
-       selectProject();
-    }});
-  } else {
-    items.push({label:'Open PFMEA', fn:()=>selectNode(n.id)});
-    items.push({label:'⇢ Connect from here', fn:()=>enterConnectMode(n.id)});
-    items.push({sep:true});
-    items.push({label:'Rename', fn:()=>renameNode(n.id)});
-    items.push({label:'Edit Sublabel', fn:()=>editSublabel(n.id)}); // <-- NEW OPTION
-    items.push({label:'Delete', danger:true, fn:()=>deleteNode(n.id)});
-  }
-
   items.forEach(it=>{
     if(it.sep){ const s=document.createElement('div'); s.className='fc-ctx-sep'; m.appendChild(s); return; }
     const el=document.createElement('div'); el.className='fc-ctx-item'+(it.danger?' danger':'');
@@ -1657,6 +1643,7 @@ function showCtx(x,y,n){
 
   setTimeout(()=>document.addEventListener('click',closeCtx,{once:true}),10);
 }
+
 function closeCtx(){ if(_ctx){_ctx.remove();_ctx=null;} }
 
 function fitChart(){
@@ -1902,7 +1889,6 @@ function renderPfmeaTable(){
   
   if(typeof updSummaryFromEntries === 'function') updSummaryFromEntries(entries);
 
-  // --- ADD THIS TO THE BOTTOM OF renderPfmeaTable() ---
   // Force all textareas to scale to their text height when the table draws
   requestAnimationFrame(() => {
     document.querySelectorAll('textarea.cell-input').forEach(el => {
@@ -2108,14 +2094,6 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// Global listener: Close tooltips when clicking anywhere else on the page
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('.th-tooltip-box')) {
-     document.querySelectorAll('.th-tooltip-box.show').forEach(el => el.classList.remove('show'));
-     document.querySelectorAll('.th-info-btn.active').forEach(el => el.classList.remove('active'));
-  }
-});
-
 // ═══════════════════════════════════
 //  DROPDOWNS
 // ═══════════════════════════════════
@@ -2126,6 +2104,7 @@ function toggleFileDropdown(e, dropdownId){
   closeAllDropdowns();
   if(!open) dd.classList.add('open');
 }
+
 function closeFileDropdown(){ 
   document.querySelectorAll('.file-dropdown').forEach(el => el.classList.remove('open')); 
 }
@@ -2137,17 +2116,12 @@ function toggleAddDropdownChart(e){
   closeAllDropdowns();
   if(!open) dd.classList.add('open');
 }
-function toggleAddDropdownChart(e){
-  e.stopPropagation();
-  const dd=document.getElementById('add-dropdown-chart');
-  const open=dd.classList.contains('open');
-  closeAllDropdowns();
-  if(!open) dd.classList.add('open');
-}
+
 function closeAddDropdownChart(){ 
   const dd = document.getElementById('add-dropdown-chart');
   if(dd) dd.classList.remove('open'); 
 }
+
 function closeAllDropdowns(){ 
   closeAddDropdownChart(); 
   closeFileDropdown(); 
@@ -2353,6 +2327,7 @@ function confirmAdd(){
   }
   
   let clonedPfmea = [];
+
   if (isRef) {
     const refNode = state.nodes.find(n => n.id === cpSelect.value);
     if (refNode && refNode.pfmea) clonedPfmea = JSON.parse(JSON.stringify(refNode.pfmea)).map(r => ({...r, id: genId()}));
@@ -2441,6 +2416,7 @@ function openProjectModal(){
   document.getElementById('proj-author').value=state.project.author||'';
   openModal('project-modal');
 }
+
 function saveProject(){
   state.project.name=document.getElementById('proj-name-input').value.trim()||'New Project';
   state.project.part=document.getElementById('proj-part').value.trim();
@@ -2452,6 +2428,7 @@ function saveProject(){
   if(currentView==='chart') renderChart();
   saveState();
 }
+
 function clearAll(){
   state={project:{name:'New Project',part:'',rev:'',author:'',pfmea:[],scope:{}},nodes:[]};
   selectedNodes=[];
@@ -2478,7 +2455,6 @@ function exportJSON(){
 }
 
 function importJSON(){ document.getElementById('file-input').click(); }
-
 
 function exportCurrentXLSX(){
   if(typeof XLSX === 'undefined'){ alert('Excel library not loaded yet — please wait a moment and try again.'); return; }
@@ -2829,9 +2805,6 @@ function exportMasterXLSX() {
   });
   R++;
 
-  // ==========================================
-  // THIS IS THE MISSING DATA LOOP!
-  // ==========================================
   const apColor = {H:'FF0000', M:'FF9900', L:'00B050', '':'000000'};
   
   if(state.masterLibrary && state.masterLibrary.length > 0) {
